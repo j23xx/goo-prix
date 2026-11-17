@@ -1,6 +1,6 @@
 [
   { "name": "1-race.jpg", "query": "?shot=race&seed=1" },
-  { "name": "2-trip.jpg", "query": "?shot=hazard&seed=1" },
+  { "name": "2-disco.jpg", "query": "?shot=hazard&seed=1" },
   { "name": "3-title.jpg", "query": "?shot=title&seed=1" },
   { "name": "4-podium.jpg", "query": "?shot=podium&seed=1" }
 ]
