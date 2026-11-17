@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GOO PRIX</title>
-<meta name="description" content="I asked for a kart racer. It refuses to touch the ground. GOO PRIX: flap, steer and splat your way through a five-race grand prix in glorious black and white.">
+<meta name="description" content="I asked for a kart racer. It made Pong again. Then it added goo. GOO PRIX: flap, steer and splat your way through a five-race neon grand prix.">
 <style>
   :root {
     --page: #2a2a2f;
@@ -79,7 +79,7 @@
     <button id="b-sound" title="Sound on/off (M)" aria-label="Sound on or off"><svg><use id="i-sound-use" href="#i-sound"/></svg></button>
     <button id="b-full" title="Fullscreen" aria-label="Fullscreen"><svg><use href="#i-full"/></svg></button>
   </div>
-  <div id="caption">I asked for a kart racer. It refuses to touch the ground. &nbsp;·&nbsp; <b>SPACE</b> flap &nbsp; <b>A/D</b> or mouse steer &nbsp; <b>CLICK</b> shoot goo &nbsp; <b>E</b> / right-click item</div>
+  <div id="caption">I asked for a kart racer. It made Pong again. Then it added goo. &nbsp;·&nbsp; <b>SPACE</b> flap &nbsp; <b>A/D</b> or mouse steer &nbsp; <b>CLICK</b> shoot goo &nbsp; <b>E</b> / right-click item</div>
 </div>
 <p id="status" role="status" aria-live="polite"></p>
 <script>
@@ -402,6 +402,8 @@ const CFG = {
 const DIFFS = ['CHILL', 'ZESTY', 'FERAL'];
 const GREYS = ['#ffffff', '#c8c8c8', '#909090', '#585858', '#303030'];
 const GOO_C = '#7cff3a';
+// The colour grammar: yellow = fly here, pink = hurts, cyan = helps, lime = goo only, white = info.
+const YEL = '#FFFC00', PNK = '#FF1F8C', CYN = '#26E6FF', ORG = '#FF730D', INK = '#0B0B12', WHT = '#F4F4F4';
 const DT = 1 / 60;
 const ORD = ['1ST', '2ND', '3RD', '4TH', '5TH', '6TH', '7TH', '8TH'];
 
@@ -559,6 +561,11 @@ function gooBlob(c, x, y, r, seed, t, color) {
   c.closePath();
   c.fillStyle = color || GOO_C;
   c.fill();
+  if (!color && r > 3) {
+    // goo gets a dark keyline and a wet highlight, so it pops on any background
+    c.lineWidth = Math.max(1.5, r * 0.14); c.strokeStyle = '#0B2A00'; c.stroke();
+    c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(x - r * 0.32, y - r * 0.32, r * 0.16, 0, TAU); c.fill();
+  }
 }
 // A flat goo splat with drips: used for decals, hits and the windscreen.
 function gooSplat(c, x, y, r, seed, alpha) {
@@ -575,6 +582,7 @@ function gooSplat(c, x, y, r, seed, alpha) {
     if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
   }
   c.closePath(); c.fill();
+  if (r > 4) { c.lineWidth = Math.max(1.2, r * 0.1); c.strokeStyle = '#0B2A00'; c.stroke(); }
   for (let i = 0; i < 4; i++) {
     const a = rng() * TAU, d = r * (1.2 + rng() * 0.6);
     c.fillRect(x + Math.cos(a) * d - r * 0.12, y + Math.sin(a) * d - r * 0.12, r * 0.24, r * 0.24);
@@ -627,6 +635,48 @@ const TRACKS = [
     song: makeSong(505, 150, 50, 'minor', 'four'),
   },
 ];
+
+// Each track's look: sky, ground, walls, neon accents and the colour distance fades into.
+const THEMES = [
+  {
+    id: 'sunset', name: 'SUNSET COURT', fog: '#FF4FA0', fogAmt: 0.8,
+    sky: { kind: 'sunset', bands: ['#1A0B3B', '#5B1A8C', '#FF1F8C', '#FF7A0D'], below: '#2A0F4A', sun: { r: 200, y: 150, top: '#FFF27A', bottom: '#FF9A3C' } },
+    ground: { kind: 'chequer', b: WHT, tile: 6, alpha: 0.9, span: 72 },
+    rail: PNK, ribs: PNK, ribEvery: 48, posts: false, pillar: PNK,
+    gate: { fill: '#2A0F4A', alpha: 0.9, hatch: PNK },
+  },
+  {
+    id: 'posters', name: 'POSTER CHUTE', fog: '#111111', fogAmt: 0.85,
+    sky: { kind: 'tunnel', bg: '#111111', dot: CYN },
+    ground: { kind: 'posters' },
+    posters: { len: 8, cols: ['#E8B21A', ORG, '#1C1C22', '#8C8C94', CYN, '#E8B21A'], inks: [INK, WHT, '#E8B21A', ORG, CYN] },
+    rail: YEL, ribs: YEL, ribEvery: 40, posts: false, pillar: PNK,
+    gate: { fill: INK, alpha: 0.94, hatch: '#E8B21A' },
+  },
+  {
+    id: 'barcode', name: 'BAR CODE', fog: '#0B4F6C', fogAmt: 0.85,
+    sky: { kind: 'gradient', top: '#061A2E', bottom: '#0B4F6C', below: '#050A18', barcode: true },
+    ground: { kind: 'grid', line: CYN, ceiling: true },
+    wallBars: '#13708F', rail: PNK, ribs: null, posts: true, pillar: PNK,
+    gate: { fill: '#0A2238', alpha: 0.92, hatch: CYN },
+  },
+  {
+    id: 'city', name: 'MELT CITY', fog: '#3B0B6B', fogAmt: 0.8,
+    sky: { kind: 'gradient', top: '#0A0320', bottom: '#3B0B6B', below: '#0E0626', moon: ORG, aurora: true },
+    ground: { kind: 'gloss' },
+    towers: { edge: '#7A3FD0', dots: [CYN, PNK, YEL] },
+    rail: PNK, ribs: null, posts: true, pillar: PNK,
+    gate: { fill: '#1A0B3B', alpha: 0.92, hatch: ORG },
+  },
+  {
+    id: 'trip', name: 'THE TRIP', fog: '#140A3A', fogAmt: 0.7,
+    sky: { kind: 'plasma', pal: ['#1433FF', '#7A1FFF', '#00C2A8', '#0B0B12', '#1433FF', '#FF1F8C', '#0B0B12'], kaleido: true, folds: 8, speed: 0.9 },
+    ground: { kind: 'none' },
+    rail: PNK, ribs: PNK, ribEvery: 24, posts: false, pillar: PNK,
+    gate: { fill: INK, alpha: 0.86, hatch: '#7A1FFF' },
+  },
+];
+TRACKS.forEach((t, i) => { t.theme = THEMES[i]; t.name = THEMES[i].name; });
 
 // ============================================================================================
 // TRACK_BUILDER — turns a track def into sorted "things" along s, hazard zones and a racing line
@@ -790,7 +840,7 @@ function buildTrack(index, opts) {
   if (def.motif === 'city') {
     for (let s2 = 0; s2 < L; s2 += r(18, 30)) {
       const side = rng() < 0.5 ? -1 : 1;
-      T.scenery.push({ s: s2, u: side * r(17, 40), w: r(6, 12), d: r(6, 12), h: r(16, 60), dots: rng() < 0.7 });
+      T.scenery.push({ s: s2, u: side * r(17, 40), w: r(6, 12), d: r(6, 12), h: r(16, 60), dots: rng() < 0.7, glow: [CYN, PNK, YEL][Math.floor(rng() * 3)] });
     }
   }
   if (def.motif === 'void' || def.motif === 'checker') {
@@ -980,166 +1030,382 @@ function seg3(c, dz0, u0, v0, dz1, u1, v1) {
 }
 
 // ============================================================================================
-// CORRIDOR_RENDER — sky, horizon, rails, posts, the dashed net racing line and each track motif
+// THEMES — the colour show: per-track palettes, fog toward the horizon colour, neon strokes,
+// gradient skies with a sliced sun, a low-res plasma / kaleidoscope backdrop, an endless chequer
+// ============================================================================================
+let THEME = null;
+function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+const COLS = new Map();
+// A theme colour seen dz ahead: mixed toward the theme's fog colour with distance (cached strings).
+function col(hex, dz, alpha) {
+  const k12 = dz == null ? 0 : Math.round(clamp(Math.pow(clamp(dz / CFG.far, 0, 1), 1.3) * THEME.fogAmt, 0, 1) * 12);
+  const a = alpha == null ? 1 : alpha;
+  const key = THEME.id + hex + '|' + k12 + '|' + a;
+  let s = COLS.get(key);
+  if (s) return s;
+  const c0 = hexRgb(hex), f = hexRgb(THEME.fog), k = k12 / 12;
+  s = 'rgba(' + Math.round(c0[0] + (f[0] - c0[0]) * k) + ',' + Math.round(c0[1] + (f[1] - c0[1]) * k) + ',' + Math.round(c0[2] + (f[2] - c0[2]) * k) + ',' + a + ')';
+  COLS.set(key, s);
+  return s;
+}
+// Stroke the current path as neon: a soft wide halo, then a hot thin core.
+function neon(c, color, lw, core) {
+  c.lineJoin = 'round';
+  c.globalAlpha = 0.3; c.lineWidth = lw * 3; c.strokeStyle = color; c.stroke();
+  c.globalAlpha = 1; c.lineWidth = lw; c.strokeStyle = core || color; c.stroke();
+}
+
+// ---- the plasma / kaleidoscope backdrop: computed on a 192x108 canvas, scaled up smooth
+const PL = { w: 192, h: 108, cv: null, cx: null, img: null, lut: null, lutKey: '' };
+function plasmaLut(stops) {
+  const key = stops.join(',');
+  if (PL.lutKey === key) return PL.lut;
+  const lut = new Uint8ClampedArray(256 * 3);
+  const rgb = stops.map(hexRgb);
+  for (let i = 0; i < 256; i++) {
+    const p = (i / 256) * rgb.length;
+    const a = rgb[Math.floor(p) % rgb.length], b = rgb[(Math.floor(p) + 1) % rgb.length], k = smooth01(p - Math.floor(p));
+    for (let j = 0; j < 3; j++) lut[i * 3 + j] = a[j] + (b[j] - a[j]) * k;
+  }
+  PL.lut = lut; PL.lutKey = key;
+  return lut;
+}
+function drawPlasma(c, sky, t) {
+  if (!PL.cv) {
+    PL.cv = document.createElement('canvas'); PL.cv.width = PL.w; PL.cv.height = PL.h;
+    PL.cx = PL.cv.getContext('2d'); PL.img = PL.cx.createImageData(PL.w, PL.h);
+  }
+  const lut = plasmaLut(sky.pal);
+  const d = PL.img.data;
+  const sp = sky.speed || 1, tt = t * sp, seg = TAU / (sky.folds || 6);
+  const turn = -Math.atan(cxD(cam.s)) * 1.4 + cam.roll;
+  for (let y = 0; y < PL.h; y++) {
+    for (let x = 0; x < PL.w; x++) {
+      let nx = (x / PL.w - 0.5) * 3.56, ny = (y / PL.h - 0.5) * 2;
+      let r = Math.hypot(nx, ny), a = Math.atan2(ny, nx) + turn;
+      if (sky.kaleido) a = Math.abs(wrap(a + tt * 0.15, seg) - seg / 2);
+      nx = Math.cos(a) * r; ny = Math.sin(a) * r;
+      const v = Math.sin(nx * 3.1 + tt) + Math.sin(ny * 3.7 - tt * 1.3) + Math.sin((nx + ny) * 2.3 + tt * 0.7) + Math.sin(r * 5.5 - tt * 2.2);
+      const idx = (Math.floor((v * 0.125 + 0.5 + tt * 0.04) * 256) & 255) * 3;
+      const o = (y * PL.w + x) * 4;
+      d[o] = lut[idx]; d[o + 1] = lut[idx + 1]; d[o + 2] = lut[idx + 2]; d[o + 3] = 255;
+    }
+  }
+  PL.cx.putImageData(PL.img, 0, 0);
+  c.imageSmoothingEnabled = true;
+  c.drawImage(PL.cv, 0, 0, W, H);
+}
+
+// ---- a synthwave sky: gradient bands to the horizon and a big sun with slices cut out of it
+function drawSunsetSky(c, sky) {
+  const hz = cam.hz + cam.oy;
+  c.save();
+  c.translate(W / 2 + cam.ox, hz); c.rotate(cam.roll);
+  const g = c.createLinearGradient(0, -hz - 80, 0, 0);
+  sky.bands.forEach((h, i) => g.addColorStop(i / (sky.bands.length - 1), h));
+  c.fillStyle = g; c.fillRect(-W, -H * 1.5, W * 2, H * 1.5 + 1);
+  c.fillStyle = sky.below || THEME.fog; c.fillRect(-W, 0, W * 2, H * 1.5);
+  if (sky.sun) {
+    const heading = -Math.atan(cxD(cam.s)) * cam.f * 0.5;
+    const sr = sky.sun.r, sx0 = heading % 900, sy0 = -sky.sun.y;
+    const sg = c.createLinearGradient(0, sy0 - sr, 0, sy0 + sr);
+    sg.addColorStop(0, sky.sun.top); sg.addColorStop(1, sky.sun.bottom);
+    c.save();
+    c.beginPath(); c.arc(sx0, sy0, sr, 0, TAU); c.clip();
+    c.fillStyle = sg; c.fillRect(sx0 - sr, sy0 - sr, sr * 2, sr * 2);
+    // slices: thin bands of sky cut through the lower half, thicker toward the bottom
+    c.fillStyle = sky.bands[sky.bands.length - 2];
+    for (let k = 0; k < 7; k++) { const yy = sy0 + sr * (0.12 + k * 0.13); c.fillRect(sx0 - sr, yy, sr * 2, 2 + k * 2.2); }
+    c.restore();
+    // its reflection in the floor, a soft glow below the horizon
+    const rg = c.createRadialGradient(sx0, 10, 4, sx0, 10, sr * 1.3);
+    rg.addColorStop(0, sky.sun.bottom); rg.addColorStop(1, 'rgba(0,0,0,0)');
+    c.globalAlpha = 0.55; c.fillStyle = rg; c.fillRect(sx0 - sr * 1.4, 0, sr * 2.8, sr * 1.4); c.globalAlpha = 1;
+  }
+  c.restore();
+}
+
+// ---- an endless chequered ground under (and beyond) the corridor, fogged to the horizon
+function drawGround(c, gr) {
+  const s0 = cam.s, tile = gr.tile || 6;
+  const first = Math.ceil((s0 + CFG.near + 0.5) / tile), last = Math.floor((s0 + CFG.far) / tile);
+  const span = gr.span || 66;
+  for (let i = last; i >= first; i--) {
+    const dzA = i * tile - s0, dzB = dzA + tile;
+    if (dzA < CFG.near + 0.4) continue;
+    c.fillStyle = col(gr.b, dzA, gr.alpha);
+    c.beginPath();
+    for (let j = -Math.ceil(span / tile); j < Math.ceil(span / tile); j++) {
+      if (((i + j) & 1) === 0) continue;
+      const ua = j * tile, ub = ua + tile;
+      projectDz(dzA, ua, 0, PT); const x1 = PT.x, y1 = PT.y;
+      projectDz(dzA, ub, 0, PT); const x2 = PT.x, y2 = PT.y;
+      projectDz(dzB, ub, 0, PT); const x3 = PT.x, y3 = PT.y;
+      projectDz(dzB, ua, 0, PT);
+      c.moveTo(x1, y1); c.lineTo(x2, y2); c.lineTo(x3, y3); c.lineTo(PT.x, PT.y); c.closePath();
+    }
+    c.fill();
+  }
+}
+
+// ---- poster walls: bold graphic panels (stripes, discs, crosshairs, block words) on the tunnel
+const POSTER_WORDS = ['GOO', 'SPLAT', 'FLAP', 'PRIX', 'BONK', 'GLOOP', 'WHEE', 'ZOOM', '8', 'GO!'];
+function wallQuad(c, dz0, dz1, u, v0, v1) {
+  projectDz(dz0, u, v0, PT); c.moveTo(PT.x, PT.y);
+  projectDz(dz0, u, v1, PT); c.lineTo(PT.x, PT.y);
+  projectDz(dz1, u, v1, PT); c.lineTo(PT.x, PT.y);
+  projectDz(dz1, u, v0, PT); c.lineTo(PT.x, PT.y);
+  c.closePath();
+}
+function drawPosterWalls(c, pw) {
+  const s0 = cam.s, len = pw.len || 9;
+  const first = Math.floor((s0 + 1) / len), last = Math.floor((s0 + CFG.far * 0.7) / len);
+  const hw = CFG.halfW, ch = CFG.ceil;
+  for (let i = last; i >= first; i--) {
+    for (const side of [-1, 1]) {
+      const sA = i * len, dzA = Math.max(CFG.near + 0.3, sA - s0), dzB = sA + len - s0;
+      if (dzB <= CFG.near + 0.4) continue;
+      const seed = (Math.imul(i * 2 + (side > 0 ? 1 : 0), 2654435761) >>> 0);
+      const r = mulberry32(seed);
+      const bg = pw.cols[seed % pw.cols.length], ink = pw.inks[(seed >>> 3) % pw.inks.length];
+      const u = side * hw;
+      // panel
+      c.beginPath(); wallQuad(c, dzA, dzB - 0.25, u, 0.2, ch - 0.2); c.fillStyle = col(bg, dzA); c.fill();
+      const kind = seed % 5;
+      c.beginPath();
+      if (kind === 0) { for (let v = 1; v < ch - 1; v += 2.2) wallQuad(c, dzA, dzB - 0.25, u, v, v + 1); }
+      else if (kind === 1) { const d0 = dzA + (dzB - dzA) * 0.2, d1 = dzB - (dzB - dzA) * 0.2; wallQuad(c, d0, d1, u, 3 + r() * 2, 9 + r() * 3); }
+      else if (kind === 2) { for (let k = 0; k < 4; k++) { const dd = dzA + (dzB - dzA) * (0.1 + k * 0.22); wallQuad(c, dd, Math.min(dzB - 0.3, dd + (dzB - dzA) * 0.1), u, 0.8, ch - 0.8); } }
+      else if (kind === 3) { wallQuad(c, dzA, dzB - 0.25, u, ch - 3.2, ch - 1.4); wallQuad(c, dzA, dzB - 0.25, u, 1.2, 2.2); }
+      c.fillStyle = col(ink, dzA); c.fill();
+      if (kind === 4 && dzA < 120) {
+        // a block word running along the wall
+        const word = POSTER_WORDS[seed % POSTER_WORDS.length];
+        const px = Math.min(0.9, (dzB - dzA) / (word.length * 6 + 2));
+        c.beginPath();
+        for (let ci = 0; ci < word.length; ci++) {
+          const g = GLYPHS[word[ci]] || GLYPHS['?'];
+          for (let row = 0; row < 7; row++) for (let colI = 0; colI < 5; colI++) {
+            if (!(g[row] & (16 >> colI))) continue;
+            const dd = dzA + (1 + ci * 6 + (side < 0 ? colI : 4 - colI)) * px;
+            const vv = ch * 0.5 + (3.5 - row) * px * 1.6;
+            if (dd < CFG.near + 0.3) continue;
+            wallQuad(c, dd, dd + px, u, vv - px * 1.6, vv);
+          }
+        }
+        c.fillStyle = col(ink, dzA); c.fill();
+      }
+    }
+  }
+}
+
+// ============================================================================================
+// CORRIDOR_RENDER — each track's sky, ground, poster walls, neon rails, frame ribs, the net line
 // ============================================================================================
 function drawSky(c, T) {
-  c.fillStyle = '#000';
-  c.fillRect(0, 0, W, H);
-  const motif = T.def.motif;
-  const heading = cxD(cam.s);
-  const shift = -Math.atan(heading) * cam.f * 0.9;
-  if (T.stars.length) {
-    c.fillStyle = '#fff';
-    for (const st of T.stars) {
-      const x = wrap(st[0] + shift, 2400) - 560;
-      const y = st[1] + cam.oy + (cam.hz - CFG.horizon) * 0.5;
-      if (x < -4 || x > W + 4) continue;
-      c.globalAlpha = motif === 'void' ? 0.35 + 0.65 * st[3] : 0.25 * st[3];
-      c.fillRect(x, y, st[2], st[2]);
+  const sky = THEME.sky;
+  c.fillStyle = THEME.fog; c.fillRect(0, 0, W, H);
+  if (sky.kind === 'sunset') drawSunsetSky(c, sky);
+  else if (sky.kind === 'plasma') drawPlasma(c, sky, world ? world.t : 0);
+  else if (sky.kind === 'gradient') drawGradientSky(c, sky);
+  else if (sky.kind === 'tunnel') { c.fillStyle = sky.bg; c.fillRect(0, 0, W, H); }
+}
+
+function drawGradientSky(c, sky) {
+  const hz = cam.hz + cam.oy, t = world ? world.t : 0;
+  c.save();
+  c.translate(W / 2 + cam.ox, hz); c.rotate(cam.roll);
+  const g = c.createLinearGradient(0, -hz, 0, 0);
+  g.addColorStop(0, sky.top); g.addColorStop(1, sky.bottom);
+  c.fillStyle = g; c.fillRect(-W, -H * 1.5, W * 2, H * 1.5 + 1);
+  c.fillStyle = sky.below; c.fillRect(-W, 0, W * 2, H * 1.5);
+  const heading = -Math.atan(cxD(cam.s)) * cam.f * 0.6;
+  if (sky.barcode) {
+    // a huge barcode skyline in orange and yellow, scrolling with the heading
+    const rng = mulberry32(31);
+    let x = wrap(heading, 1400) - 1400 - W;
+    c.globalAlpha = 0.9;
+    while (x < W) {
+      const w = 6 + rng() * 28, h = 50 + rng() * 150;
+      c.fillStyle = rng() < 0.5 ? ORG : YEL;
+      c.fillRect(x, -h, w, h);
+      x += w + 4 + rng() * 14;
     }
     c.globalAlpha = 1;
   }
-  if (motif === 'city') {
-    // far skyline: a strip of blocky silhouettes that slides with the heading
-    c.fillStyle = '#0d0d0d'; c.strokeStyle = '#303030'; c.lineWidth = 2;
-    const rng = mulberry32(77);
-    c.beginPath();
-    let x = wrap(shift * 0.6, 1600) - 1600;
-    while (x < W + 200) {
-      const w = 40 + rng() * 90, h = 30 + rng() * 120;
-      c.rect(x, cam.hz + cam.oy - h, w, h + 4);
-      x += w + 6;
-    }
-    c.fill(); c.stroke();
+  if (sky.moon) {
+    const mx = wrap(heading * 0.5 + 300, 1600) - 800, my = -250;
+    c.fillStyle = sky.moon; c.beginPath(); c.arc(mx, my, 70, 0, TAU); c.fill();
+    c.fillStyle = sky.top; c.beginPath(); c.arc(mx + 30, my - 16, 62, 0, TAU); c.fill();
   }
-  // horizon line, rolled with the camera
-  c.save();
-  c.translate(W / 2 + cam.ox, cam.hz + cam.oy);
-  c.rotate(cam.roll);
-  c.fillStyle = motif === 'void' ? '#141414' : '#262626';
-  c.fillRect(-W, -1, W * 2, 2);
+  if (sky.aurora) {
+    for (const [cc, ph, yy] of [[PNK, 0, -320], [CYN, 2.1, -260]]) {
+      c.beginPath();
+      for (let x = -W; x <= W; x += 20) {
+        const y = yy + Math.sin(x * 0.006 + t * 0.8 + ph) * 40 + Math.sin(x * 0.013 - t * 0.5) * 18;
+        if (x === -W) c.moveTo(x, y); else c.lineTo(x, y);
+      }
+      c.globalAlpha = 0.7; neon(c, cc, 7); c.globalAlpha = 1;
+    }
+  }
   c.restore();
+}
+
+// Distance bands: everything in one band is stroked in one go, in that band's fogged colour.
+const BANDS = [0, 18, 40, 75, 125, 185, 261];
+function bandOf(dz) { let b = 0; while (b < BANDS.length - 2 && dz >= BANDS[b + 1]) b++; return b; }
+function bandMid(b) { return (BANDS[b] + BANDS[b + 1]) / 2; }
+function bandPaths() { const ps = []; for (let b = 0; b < BANDS.length - 1; b++) ps.push(new Path2D()); return ps; }
+function neonPath(c, path, color, lw) {
+  c.lineJoin = 'round'; c.lineCap = 'round';
+  c.globalAlpha = 0.3; c.lineWidth = lw * 3; c.strokeStyle = color; c.stroke(path);
+  c.globalAlpha = 1; c.lineWidth = lw; c.stroke(path);
+}
+
+// Bar Code: a neon grid floor (and ceiling) that pulses on the kick drum.
+function drawGrid(c, gr, t) {
+  const s0 = cam.s, step = 6, span = 60;
+  const pulse = 0.55 + 0.45 * Math.pow(Math.max(0, Math.cos(t * Math.PI * TRACK.def.song.bpm / 60)), 4);
+  const ps = bandPaths();
+  const first = Math.ceil((s0 + CFG.near) / step), last = Math.floor((s0 + CFG.far) / step);
+  for (let i = first; i < last; i++) {
+    const dzA = i * step - s0, dzB = dzA + step, p = ps[bandOf(dzA)];
+    seg3(p, dzA, -span, 0, dzA, span, 0);
+    for (let u = -span; u <= span; u += step) seg3(p, dzA, u, 0, dzB, u, 0);
+    if (gr.ceiling) { seg3(p, dzA, -CFG.halfW, CFG.ceil, dzA, CFG.halfW, CFG.ceil); for (let u = -12; u <= 12; u += 6) seg3(p, dzA, u, CFG.ceil, dzB, u, CFG.ceil); }
+  }
+  c.globalAlpha = pulse;
+  for (let b = ps.length - 1; b >= 0; b--) { c.lineWidth = b < 2 ? 2 : 1; c.strokeStyle = col(gr.line, bandMid(b)); c.stroke(ps[b]); }
+  c.globalAlpha = 1;
+}
+
+// Melt City: a wet floor, the towers' lights reflected in long streaks.
+function drawGloss(c) {
+  for (const b of TRACK.scenery) {
+    const dz = relDz(b.s);
+    if (dz < 8 || dz > CFG.far) continue;
+    projectDz(dz, b.u, 0, PT);
+    const w = Math.max(2, b.w * PT.k * 0.35), len = Math.min(280, b.h * PT.k * 0.7);
+    const g = c.createLinearGradient(0, PT.y, 0, PT.y + len);
+    g.addColorStop(0, col(b.glow, dz, 0.5)); g.addColorStop(1, col(b.glow, dz, 0));
+    c.fillStyle = g; c.fillRect(PT.x - w / 2, PT.y, w, len);
+  }
+}
+
+// Poster Chute: floor and ceiling panels too, so the tunnel is plastered edge to edge.
+function floorQuad(c, dz0, dz1, u0, u1, v) {
+  projectDz(dz0, u0, v, PT); c.moveTo(PT.x, PT.y);
+  projectDz(dz0, u1, v, PT); c.lineTo(PT.x, PT.y);
+  projectDz(dz1, u1, v, PT); c.lineTo(PT.x, PT.y);
+  projectDz(dz1, u0, v, PT); c.lineTo(PT.x, PT.y);
+  c.closePath();
+}
+function drawPosterTunnel(c, pw) {
+  const s0 = cam.s, len = pw.len, hw = CFG.halfW, ch = CFG.ceil;
+  const first = Math.floor((s0 + 1) / len), last = Math.floor((s0 + CFG.far * 0.75) / len);
+  for (let i = last; i >= first; i--) {
+    const dzA = Math.max(CFG.near + 0.3, i * len - s0), dzB = i * len + len - s0;
+    if (dzB <= CFG.near + 0.5) continue;
+    for (let j = 0; j < 3; j++) {
+      const u0 = -hw + j * 8, u1 = u0 + 8;
+      for (const v of [0, ch]) {
+        const seed = (Math.imul(i * 7 + j * 3 + (v ? 1 : 0), 2246822519) >>> 0);
+        c.fillStyle = col(pw.cols[seed % pw.cols.length], dzA);
+        c.beginPath(); floorQuad(c, dzA, dzB - 0.2, u0 + 0.1, u1 - 0.1, v); c.fill();
+        if (seed % 3 === 0) {
+          c.fillStyle = col(pw.inks[(seed >>> 4) % pw.inks.length], dzA);
+          c.beginPath(); floorQuad(c, dzA + (dzB - dzA) * 0.3, dzA + (dzB - dzA) * 0.55, u0 + 0.1, u1 - 0.1, v); c.fill();
+        }
+      }
+    }
+  }
+  drawPosterWalls(c, pw);
+}
+
+// Bar Code: barcode stripes running along both walls.
+function drawWallBars(c, color, startI, endI) {
+  const s0 = cam.s, hw = CFG.halfW, ch = CFG.ceil;
+  for (let i = endI; i >= startI; i--) {
+    const dzA = i * SEG_STEP - s0;
+    if (dzA < CFG.near + 0.1) continue;
+    const code = (Math.imul(i, 2654435761) >>> 0) % 7;
+    if (code > 3) continue;
+    const wdt = 0.6 + code * 0.7;
+    c.fillStyle = col(color, dzA);
+    c.beginPath();
+    for (const side of [-1, 1]) { wallQuad(c, dzA, dzA + wdt, side * hw, 0, ch); }
+    c.fill();
+  }
 }
 
 const SEG_STEP = 4;
 function drawCorridor(c, T) {
-  const motif = T.def.motif;
-  const far = CFG.far;
-  const s0 = cam.s;
-  const startI = Math.ceil((s0 + CFG.near) / SEG_STEP);
-  const endI = Math.floor((s0 + far) / SEG_STEP);
-  const hw = CFG.halfW, ch = CFG.ceil;
-  c.lineCap = 'square';
-  // floor tiles / wall stripes first (they sit under the rails)
-  if (motif === 'checker') {
-    for (let i = endI; i >= startI; i--) {
-      const sA = i * SEG_STEP, dzA = sA - s0, dzB = dzA + SEG_STEP;
-      if (dzA < CFG.near + 0.1) continue;
-      const lvl = fogLevel(dzA);
-      if (lvl >= 4) continue;
-      const row = i & 1;
-      c.fillStyle = lvl < 2 ? '#1c1c1c' : '#121212';
-      c.beginPath();
-      for (let j = -3; j < 3; j++) {
-        if (((j + 3 + row) & 1) === 0) continue;
-        const ua = j * 4, ub = ua + 4;
-        projectDz(dzA, ua, 0, PT); const x1 = PT.x, y1 = PT.y;
-        projectDz(dzA, ub, 0, PT); const x2 = PT.x, y2 = PT.y;
-        projectDz(dzB, ub, 0, PT); const x3 = PT.x, y3 = PT.y;
-        projectDz(dzB, ua, 0, PT);
-        c.moveTo(x1, y1); c.lineTo(x2, y2); c.lineTo(x3, y3); c.lineTo(PT.x, PT.y); c.closePath();
-        // ceiling mirror
-        projectDz(dzA, ua, ch, PT); const a1 = PT.x, b1 = PT.y;
-        projectDz(dzA, ub, ch, PT); const a2 = PT.x, b2 = PT.y;
-        projectDz(dzB, ub, ch, PT); const a3 = PT.x, b3 = PT.y;
-        projectDz(dzB, ua, ch, PT);
-        c.moveTo(a1, b1); c.lineTo(a2, b2); c.lineTo(a3, b3); c.lineTo(PT.x, PT.y); c.closePath();
-      }
-      c.fill();
+  const th = THEME, s0 = cam.s, hw = CFG.halfW, ch = CFG.ceil, t = world.t;
+  const startI = Math.ceil((s0 + CFG.near) / SEG_STEP), endI = Math.floor((s0 + CFG.far) / SEG_STEP);
+  const gr = th.ground;
+  if (gr.kind === 'chequer') drawGround(c, gr);
+  else if (gr.kind === 'grid') drawGrid(c, gr, t);
+  else if (gr.kind === 'gloss') drawGloss(c);
+  if (th.posters) drawPosterTunnel(c, th.posters);
+  if (th.wallBars) drawWallBars(c, th.wallBars, startI, endI);
+  // rails, posts and ceiling edges as neon, one path per distance band
+  const ps = bandPaths();
+  for (let i = startI; i < endI; i++) {
+    const dzA = i * SEG_STEP - s0, dzB = dzA + SEG_STEP, p = ps[bandOf(dzA)];
+    for (const side of [-1, 1]) {
+      const u = side * hw;
+      if (gr.kind !== 'none') seg3(p, dzA, u, 0, dzB, u, 0);
+      seg3(p, dzA, u, ch, dzB, u, ch);
+      if (th.posts && i % 4 === 0) seg3(p, dzA, u, 0, dzA, u, ch);
     }
   }
-  if (motif === 'barcode') {
-    for (let i = endI; i >= startI; i--) {
-      const sA = i * SEG_STEP, dzA = sA - s0;
-      if (dzA < CFG.near + 0.1) continue;
-      const lvl = fogLevel(dzA);
-      if (lvl >= 4) continue;
-      const code = (Math.imul(i, 2654435761) >>> 0) % 7;
-      if (code > 3) continue;
-      const wdt = 0.6 + code * 0.7;
-      c.fillStyle = GREYS[Math.min(4, lvl + 2)];
-      c.beginPath();
-      for (const side of [-1, 1]) {
-        const u = side * hw;
-        projectDz(dzA, u, 0, PT); const x1 = PT.x, y1 = PT.y;
-        projectDz(dzA, u, ch, PT); const x2 = PT.x, y2 = PT.y;
-        projectDz(dzA + wdt, u, ch, PT); const x3 = PT.x, y3 = PT.y;
-        projectDz(dzA + wdt, u, 0, PT);
-        c.moveTo(x1, y1); c.lineTo(x2, y2); c.lineTo(x3, y3); c.lineTo(PT.x, PT.y); c.closePath();
-      }
-      c.fill();
+  for (let b = ps.length - 1; b >= 0; b--) neonPath(c, ps[b], col(th.rail, bandMid(b)), b < 2 ? 3 : b < 4 ? 2 : 1.2);
+  // frame ribs: whole neon rectangles across the corridor, like the inspiration's magenta frame
+  if (th.ribs) {
+    const first = Math.ceil((s0 + 4) / th.ribEvery) * th.ribEvery;
+    for (let s = first + Math.floor((CFG.far - 4) / th.ribEvery) * th.ribEvery; s >= first; s -= th.ribEvery) {
+      const dz = s - s0;
+      if (dz > CFG.far) continue;
+      const S = slabAt(dz);
+      c.beginPath(); slabRect(c, S, -hw, 0, hw, ch);
+      neon(c, col(th.ribs, dz), clamp(S.k * 0.1, 1.2, 5));
     }
   }
-  // rails and posts, grouped per fog level so each level is one stroke
-  for (let lvl = 4; lvl >= 0; lvl--) {
-    c.beginPath();
-    let any = false;
-    for (let i = startI; i < endI; i++) {
-      const dzA = i * SEG_STEP - s0, dzB = dzA + SEG_STEP;
-      if (fogLevel(dzA) !== lvl) continue;
-      any = true;
-      const floorRails = motif !== 'void';
-      for (const side of [-1, 1]) {
-        const u = side * hw;
-        if (floorRails) seg3(c, dzA, u, 0, dzB, u, 0);
-        seg3(c, dzA, u, ch, dzB, u, ch);
-        if (i % 4 === 0 && motif !== 'void') seg3(c, dzA, u, 0, dzA, u, ch);
-      }
-      if (motif === 'court' && i % 10 === 0) seg3(c, dzA, -hw, 0, dzA, hw, 0);
-      if (motif === 'court') { seg3(c, dzA, -hw + 2, 0, dzB, -hw + 2, 0); seg3(c, dzA, hw - 2, 0, dzB, hw - 2, 0); }
-      if (motif === 'city' && i % 4 === 0) seg3(c, dzA, -hw, ch, dzA, hw, ch);
-    }
-    if (!any) continue;
-    c.strokeStyle = GREYS[lvl];
-    c.lineWidth = lvl === 0 ? 3 : lvl === 1 ? 2 : 1.5;
-    c.stroke();
-  }
-  // the dashed net: the racing line, chunky Pong dashes on the floor (or floating in the void)
-  const netV = motif === 'void' ? 0.0 : 0.02;
+  // the dashed net: the racing line, chunky Pong dashes in white
   for (let i = endI; i >= startI; i--) {
     if (i % 2) continue;
     const sA = i * SEG_STEP, dzA = sA - s0, dzB = dzA + SEG_STEP * 0.9;
     if (dzA < CFG.near) continue;
     const uA = lineUAt(sA), uB = lineUAt(sA + SEG_STEP * 0.9);
-    const lvl = fogLevel(dzA);
-    projectDz(dzA, uA - 0.32, netV, PT); const x1 = PT.x, y1 = PT.y;
-    projectDz(dzA, uA + 0.32, netV, PT); const x2 = PT.x, y2 = PT.y;
-    projectDz(dzB, uB + 0.32, netV, PT); const x3 = PT.x, y3 = PT.y;
-    projectDz(dzB, uB - 0.32, netV, PT);
-    c.fillStyle = GREYS[lvl];
-    c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.lineTo(x3, y3); c.lineTo(PT.x, PT.y); c.closePath(); c.fill();
+    const v = gr.kind === 'none' ? 0 : 0.03;
+    c.beginPath();
+    projectDz(dzA, uA - 0.34, v, PT); c.moveTo(PT.x, PT.y);
+    projectDz(dzA, uA + 0.34, v, PT); c.lineTo(PT.x, PT.y);
+    projectDz(dzB, uB + 0.34, v, PT); c.lineTo(PT.x, PT.y);
+    projectDz(dzB, uB - 0.34, v, PT); c.lineTo(PT.x, PT.y);
+    c.closePath();
+    c.fillStyle = col(th.net || WHT, dzA); c.fill();
+    if (dzA < 40) { c.lineWidth = 2; c.strokeStyle = INK; c.stroke(); }
   }
-  // start / finish: a checkered strip across the floor and an arch
+  // start / finish: a white and ink chequered strip with a neon arch
   for (let lap = 0; lap < 2; lap++) {
     const dz = relDz(lap * T.L);
-    if (dz < CFG.near || dz > far) continue;
-    const lvl = fogLevel(dz);
-    for (let j = 0; j < 12; j++) {
-      for (let row = 0; row < 2; row++) {
-        if ((j + row) & 1) continue;
-        c.beginPath();
-        const ua = -hw + j * 2, ub = ua + 2;
-        projectDz(dz + row * 1.2, ua, 0, PT); c.moveTo(PT.x, PT.y);
-        projectDz(dz + row * 1.2, ub, 0, PT); c.lineTo(PT.x, PT.y);
-        projectDz(dz + row * 1.2 + 1.2, ub, 0, PT); c.lineTo(PT.x, PT.y);
-        projectDz(dz + row * 1.2 + 1.2, ua, 0, PT); c.lineTo(PT.x, PT.y);
-        c.closePath(); c.fillStyle = GREYS[lvl]; c.fill();
-      }
+    if (dz < CFG.near || dz > CFG.far) continue;
+    for (let j = 0; j < 12; j++) for (let row = 0; row < 2; row++) {
+      c.fillStyle = (j + row) & 1 ? col(INK, dz) : col(WHT, dz);
+      c.beginPath(); floorQuad(c, dz + row * 1.2, dz + row * 1.2 + 1.2, -hw + j * 2, -hw + j * 2 + 2, 0.02); c.fill();
     }
+    const S = slabAt(dz);
+    c.beginPath(); slabRect(c, S, -hw, 0, hw, ch);
+    neon(c, col(YEL, dz), clamp(S.k * 0.16, 1.5, 7));
+  }
+  if (th.sky.kind === 'tunnel') {
+    projectDz(CFG.far, lineUAt(cam.s + CFG.far), CFG.ceil / 2, PT);
+    c.fillStyle = th.sky.dot; c.beginPath(); c.arc(PT.x, PT.y, 6, 0, TAU); c.fill();
   }
 }
 
-// City towers: wireframe boxes beside the corridor with dotted windows.
+// Melt City towers: ink blocks with a fogged edge and lit windows in the three neons.
 function drawScenery(c, T, list) {
   for (const b of T.scenery) {
     const dz = relDz(b.s);
@@ -1148,27 +1414,26 @@ function drawScenery(c, T, list) {
   }
 }
 function drawTower(c, b, dz) {
-  const lvl = fogLevel(dz);
   const d0 = dz - b.d, d1 = dz;
   if (d0 < CFG.near) return;
   const u0 = b.u - b.w / 2, u1 = b.u + b.w / 2;
   const S = slabAt(d0);
-  c.fillStyle = '#000';
+  c.fillStyle = INK;
   c.beginPath(); slabRect(c, S, u0, 0, u1, b.h); c.fill();
-  c.strokeStyle = GREYS[Math.min(4, lvl + 1)]; c.lineWidth = lvl < 2 ? 2 : 1;
-  c.stroke();
+  c.strokeStyle = col(THEME.towers.edge, d0); c.lineWidth = d0 < 60 ? 2 : 1; c.stroke();
   c.beginPath();
-  const near = b.u > 0 ? u0 : u1;
-  seg3(c, d0, near, 0, d1, near, 0);
-  seg3(c, d0, near, b.h, d1, near, b.h);
+  const nearU = b.u > 0 ? u0 : u1;
+  seg3(c, d0, nearU, 0, d1, nearU, 0);
+  seg3(c, d0, nearU, b.h, d1, nearU, b.h);
   c.stroke();
-  if (b.dots && lvl < 3) {
-    c.fillStyle = GREYS[Math.min(4, lvl + 1)];
-    const S2 = slabAt(d0);
-    const px = Math.max(1, S2.k * 0.5);
+  if (b.dots && d0 < 180) {
+    const px = Math.max(1.5, S.k * 0.55);
+    const blink = Math.floor(world.t * 2);
     for (let yy = 3; yy < b.h - 2; yy += 3) for (let xx = u0 + 1.5; xx < u1 - 1; xx += 2.5) {
-      if (((xx * 7 + yy * 13) | 0) % 3 === 0) continue;
-      c.fillRect(sx(S2, xx, yy) - px / 2, sy(S2, xx, yy) - px / 2, px, px);
+      const h = Math.abs((xx * 7 + yy * 13) | 0);
+      if (h % 3 === 0 || (h + blink) % 11 === 0) continue;
+      c.fillStyle = col(THEME.towers.dots[h % THEME.towers.dots.length], d0);
+      c.fillRect(sx(S, xx, yy) - px / 2, sy(S, xx, yy) - px / 2, px, px);
     }
   }
 }
@@ -1215,11 +1480,15 @@ function drawThing(c, th, dz, item) {
 function drawDecals(c, S, th) {
   for (const d of th.decals) gooSplat(c, sx(S, d.u, d.v), sy(S, d.u, d.v), d.r * S.k, d.seed, 0.95);
 }
+// Fill the current path in a colour with an ink keyline round it: reads on any background.
+function inked(c, fill, lw) {
+  c.fillStyle = fill; c.fill();
+  c.lineJoin = 'round'; c.lineWidth = lw; c.strokeStyle = INK; c.stroke();
+}
 
 function drawGate(c, g, dz, solid) {
-  const t = world.t;
+  const t = world.t, th = THEME;
   const S = slabAt(dz);
-  const lvl = fogLevel(dz);
   const cu = gateCentreU(g, t);
   const hw = CFG.halfW, ch = CFG.ceil;
   const u0 = cu - g.w / 2, u1 = cu + g.w / 2, v0 = g.v - g.h / 2, v1 = g.v + g.h / 2;
@@ -1227,167 +1496,156 @@ function drawGate(c, g, dz, solid) {
   c.beginPath();
   slabRect(c, S, -hw, 0, hw, ch);
   slabRect(c, S, u0, v0, u1, v1);
-  if (solid) {
-    c.fillStyle = lvl === 0 ? '#2e2e2e' : lvl === 1 ? '#222' : '#181818';
-    c.globalAlpha = 0.93;
-    c.fill('evenodd');
-    c.globalAlpha = 1;
-  }
-  c.strokeStyle = GREYS[Math.min(4, lvl + 1)]; c.lineWidth = lineW(S.k) * 0.6;
-  c.stroke();
-  if (solid && lvl < 3) {
-    // sparse hatch dashes across the wall
+  if (solid) { c.fillStyle = col(th.gate.fill, dz, th.gate.alpha); c.fill('evenodd'); }
+  c.strokeStyle = col(th.rail, dz); c.lineWidth = Math.max(1, lineW(S.k) * 0.6); c.stroke();
+  if (solid && dz < 170) {
+    // bold hatch stripes across the wall in the track's accent
     c.beginPath();
     for (let v = 1.5; v < ch; v += 2.5) {
       for (let u = -hw + ((v * 3) % 4); u < hw; u += 4) {
-        if (u + 1.6 > u0 && u < u1 && v > v0 && v < v1) continue;
-        c.moveTo(sx(S, u, v), sy(S, u, v)); c.lineTo(sx(S, Math.min(u + 1.6, hw), v), sy(S, Math.min(u + 1.6, hw), v));
+        if (u + 1.8 > u0 && u < u1 && v > v0 && v < v1) continue;
+        c.moveTo(sx(S, u, v), sy(S, u, v)); c.lineTo(sx(S, Math.min(u + 1.8, hw), v), sy(S, Math.min(u + 1.8, hw), v));
       }
     }
-    c.strokeStyle = GREYS[Math.min(4, lvl + 2)]; c.lineWidth = Math.max(1, lineW(S.k) * 0.4); c.stroke();
+    c.strokeStyle = col(th.gate.hatch, dz, 0.85); c.lineWidth = Math.max(1, lineW(S.k) * 0.55); c.stroke();
   }
   drawDecals(c, S, g);
-  // the window: thick white frame and pulsing corner brackets
+  // the window: an ink keyline, then a neon yellow frame (yellow means fly here)
   const lw = lineW(S.k) * 1.4;
   c.beginPath(); slabRect(c, S, u0, v0, u1, v1);
-  c.strokeStyle = GREYS[lvl]; c.lineWidth = lw; c.stroke();
+  c.lineWidth = lw * 2.4; c.strokeStyle = INK; c.lineJoin = 'miter'; c.stroke();
+  neon(c, col(YEL, dz), lw, dz < 60 ? '#FFFFD0' : null);
   if (solid) {
-    const next = g === world.nextTh;   // the window you are flying at gets big green target brackets
-    const pulse = (next ? 0.55 : 0.35) + 0.15 * Math.sin(t * TAU * 2);
-    const bl = Math.min(g.w, g.h) * (next ? 0.34 : 0.22);
-    c.beginPath();
-    for (const [cx, cy, dx, dy] of [[u0, v0, 1, 1], [u1, v0, -1, 1], [u1, v1, -1, -1], [u0, v1, 1, -1]]) {
-      const ox = cx - dx * pulse, oy = cy - dy * pulse;
-      c.moveTo(sx(S, ox + dx * bl, oy), sy(S, ox + dx * bl, oy));
-      c.lineTo(sx(S, ox, oy), sy(S, ox, oy));
-      c.lineTo(sx(S, ox, oy + dy * bl), sy(S, ox, oy + dy * bl));
+    const next = g === world.nextTh;   // the window you are flying at gets big white target brackets
+    if (next) {
+      const pulse = 0.6 + 0.18 * Math.sin(t * TAU * 2);
+      const bl = Math.min(g.w, g.h) * 0.34;
+      c.beginPath();
+      for (const [cx, cy, dx, dy] of [[u0, v0, 1, 1], [u1, v0, -1, 1], [u1, v1, -1, -1], [u0, v1, 1, -1]]) {
+        const ox = cx - dx * pulse, oy = cy - dy * pulse;
+        c.moveTo(sx(S, ox + dx * bl, oy), sy(S, ox + dx * bl, oy));
+        c.lineTo(sx(S, ox, oy), sy(S, ox, oy));
+        c.lineTo(sx(S, ox, oy + dy * bl), sy(S, ox, oy + dy * bl));
+      }
+      c.lineWidth = lw * 2.6; c.strokeStyle = INK; c.stroke();
+      neon(c, WHT, lw * 1.2);
     }
-    c.strokeStyle = next ? GOO_C : '#fff'; c.lineWidth = next ? lw * 1.6 : lw; c.stroke();
     // drop-line from the sill to the floor so the height reads at a glance
     c.beginPath();
     c.moveTo(sx(S, cu, v0), sy(S, cu, v0)); c.lineTo(sx(S, cu, 0), sy(S, cu, 0));
     c.moveTo(sx(S, cu - 0.5, 0), sy(S, cu - 0.5, 0)); c.lineTo(sx(S, cu + 0.5, 0), sy(S, cu + 0.5, 0));
-    c.strokeStyle = GREYS[Math.min(4, lvl + 1)]; c.lineWidth = Math.max(1, lw * 0.35); c.stroke();
+    c.strokeStyle = col(YEL, dz, 0.6); c.lineWidth = Math.max(1, lw * 0.35); c.stroke();
   }
   if (g.paddle) {
     const pu = paddleU(g, t);
     c.beginPath(); slabRect(c, S, pu - g.paddle.w / 2, g.v - g.paddle.h / 2, pu + g.paddle.w / 2, g.v + g.paddle.h / 2);
-    c.fillStyle = GREYS[lvl]; c.fill();
+    inked(c, col(PNK, dz), Math.max(1.5, lw));
   }
 }
 
 function drawPillars(c, p, dz, solid) {
   const S = slabAt(dz);
-  const lvl = fogLevel(dz);
   for (const b of p.bars) {
     c.beginPath(); slabRect(c, S, b.u - b.w / 2, 0, b.u + b.w / 2, CFG.ceil);
-    c.fillStyle = solid ? GREYS[Math.min(4, lvl + 1)] : '#000'; c.fill();
-    c.strokeStyle = GREYS[lvl]; c.lineWidth = lineW(S.k) * 0.8; c.stroke();
+    if (solid) inked(c, col(THEME.pillar, dz), Math.max(1.5, lineW(S.k) * 0.8));
+    else { c.strokeStyle = col(THEME.pillar, dz); c.lineWidth = lineW(S.k) * 0.6; c.stroke(); }
   }
   drawDecals(c, S, p);
 }
 
 function drawBlocks(c, th, dz) {
-  const lvl = fogLevel(dz);
   for (const b of th.blocks) {
     if (b.hp <= 0) continue;
-    const S = slabAt(dz);
     const S2 = slabAt(dz + 2);
-    // back face, connectors, front face: a solid little Pong block
     c.beginPath(); slabRect(c, S2, b.u - 1, b.v - 1, b.u + 1, b.v + 1);
-    c.strokeStyle = GREYS[Math.min(4, lvl + 1)]; c.lineWidth = 1.5; c.stroke();
+    c.fillStyle = col('#9A3F00', dz); c.fill();
     const S1 = slabAt(dz);
     c.beginPath(); slabRect(c, S1, b.u - 1, b.v - 1, b.u + 1, b.v + 1);
-    c.fillStyle = GREYS[Math.min(4, lvl + 1)]; c.fill();
-    c.strokeStyle = GREYS[lvl]; c.lineWidth = lineW(S1.k) * 0.6; c.stroke();
+    inked(c, col(ORG, dz), Math.max(1.5, lineW(S1.k) * 0.7));
     c.beginPath(); c.moveTo(sx(S1, b.u - 0.5, b.v), sy(S1, b.u - 0.5, b.v)); c.lineTo(sx(S1, b.u + 0.5, b.v), sy(S1, b.u + 0.5, b.v));
     c.moveTo(sx(S1, b.u, b.v - 0.5), sy(S1, b.u, b.v - 0.5)); c.lineTo(sx(S1, b.u, b.v + 0.5), sy(S1, b.u, b.v + 0.5));
-    c.strokeStyle = '#000'; c.lineWidth = Math.max(1, S1.k * 0.18); c.stroke();
-    void S;
+    c.strokeStyle = INK; c.lineWidth = Math.max(1, S1.k * 0.18); c.stroke();
   }
-  const S = slabAt(dz);
-  drawDecals(c, S, th);
+  drawDecals(c, slabAt(dz), th);
 }
 
 function drawRing(c, r, dz) {
   const S = slabAt(dz);
-  const lvl = fogLevel(dz);
   const a = r.spin + world.t * 1.6;
   c.beginPath();
   for (let i = 0; i < 4; i++) {
-    const ang = a * 0 + i * Math.PI / 2;
+    const ang = i * Math.PI / 2;
     const u = r.u + Math.cos(ang) * r.r, v = r.v + Math.sin(ang) * r.r;
     if (i === 0) c.moveTo(sx(S, u, v), sy(S, u, v)); else c.lineTo(sx(S, u, v), sy(S, u, v));
   }
   c.closePath();
-  c.strokeStyle = GREYS[lvl]; c.lineWidth = lineW(S.k) * 1.6; c.stroke();
-  // inner chevrons pointing forward
+  c.lineWidth = lineW(S.k) * 3.4; c.strokeStyle = INK; c.stroke();
+  neon(c, col(CYN, dz), lineW(S.k) * 1.6, dz < 60 ? '#E8FDFF' : null);
   const pulse = (Math.sin(a * 2) + 1) * 0.5;
-  c.beginPath();
   const rr = r.r * (0.35 + 0.25 * pulse);
+  c.beginPath();
   c.moveTo(sx(S, r.u - rr, r.v), sy(S, r.u - rr, r.v)); c.lineTo(sx(S, r.u, r.v + rr * 0.6), sy(S, r.u, r.v + rr * 0.6)); c.lineTo(sx(S, r.u + rr, r.v), sy(S, r.u + rr, r.v));
-  c.strokeStyle = GREYS[Math.min(4, lvl + 1)]; c.lineWidth = Math.max(1, lineW(S.k)); c.stroke();
+  c.strokeStyle = col(CYN, dz); c.lineWidth = Math.max(1, lineW(S.k)); c.stroke();
 }
 
 function drawCube(c, cb, dz) {
   const S = slabAt(dz);
-  const lvl = fogLevel(dz);
   const k = S.k;
   const x = sx(S, cb.u, cb.v), y = sy(S, cb.u, cb.v + Math.sin(world.t * 3 + cb.spin) * 0.25);
   const size = 1.6 * k;
   const a = world.t * 1.4 + cb.spin;
+  const hue = Math.floor((world.t * 140 + cb.spin * 60) % 360);
   c.save();
   c.translate(x, y); c.rotate(cam.roll);
-  // a spinning jelly cube: two squares offset by the spin, joined at the corners
+  // a spinning jelly cube: two squares offset by the spin, joined at the corners, rainbow-stroked
   const off = Math.sin(a) * size * 0.28, offy = -size * 0.22;
-  c.strokeStyle = GREYS[lvl]; c.lineWidth = Math.max(1, lineW(k) * (cb.gold ? 1.3 : 0.9));
+  const stroke = 'hsl(' + hue + ',100%,62%)';
+  c.lineWidth = Math.max(1.5, lineW(k) * (cb.gold ? 1.3 : 1));
+  c.strokeStyle = stroke;
   c.strokeRect(-size / 2 + off, -size / 2 + offy, size, size);
-  c.fillStyle = '#000';
+  c.fillStyle = 'rgba(244,244,244,0.82)';
   c.fillRect(-size / 2, -size / 2, size, size);
-  c.strokeRect(-size / 2, -size / 2, size, size);
+  c.lineWidth = Math.max(2, lineW(k) * 1.6); c.strokeStyle = INK; c.strokeRect(-size / 2, -size / 2, size, size);
+  c.lineWidth = Math.max(1.5, lineW(k)); c.strokeStyle = stroke; c.strokeRect(-size / 2, -size / 2, size, size);
   c.beginPath();
   for (const [px, py] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
     c.moveTo(px * size / 2, py * size / 2); c.lineTo(px * size / 2 + off, py * size / 2 + offy);
   }
   c.stroke();
-  if (cb.gold) { c.strokeRect(-size / 2 - size * 0.16, -size / 2 - size * 0.16, size * 1.32, size * 1.32); }
-  // the swirl glyph: a little square spiral
+  if (cb.gold) { c.strokeStyle = YEL; c.lineWidth = Math.max(2, lineW(k) * 1.3); c.strokeRect(-size / 2 - size * 0.16, -size / 2 - size * 0.16, size * 1.32, size * 1.32); }
+  // the swirl glyph: a little square spiral in ink
   c.beginPath();
   const q = size * 0.12;
   c.moveTo(0, 0); c.lineTo(q, 0); c.lineTo(q, q); c.lineTo(-q, q); c.lineTo(-q, -q * 2); c.lineTo(q * 2, -q * 2); c.lineTo(q * 2, q * 2);
-  c.lineWidth = Math.max(1, size * 0.07); c.stroke();
+  c.strokeStyle = INK; c.lineWidth = Math.max(1, size * 0.08); c.stroke();
   c.restore();
 }
 
 function drawCoin(c, cn, dz) {
   const S = slabAt(dz);
-  const lvl = fogLevel(dz);
   const x = sx(S, cn.u, cn.v), y = sy(S, cn.u, cn.v);
-  const s = 0.7 * S.k;
+  const s = 0.75 * S.k;
   const w = s * Math.max(0.15, Math.abs(Math.cos(world.t * 4 + cn.s)));
-  c.fillStyle = GREYS[lvl];
-  c.fillRect(x - w / 2, y - s / 2, w, s);
+  c.fillStyle = INK; c.fillRect(x - w / 2 - 2, y - s / 2 - 2, w + 4, s + 4);
+  c.fillStyle = col(YEL, dz); c.fillRect(x - w / 2, y - s / 2, w, s);
 }
 
 function drawBall(c, b, dz) {
   const [bu, bv] = ballPos(b, world.t);
-  const lvl = fogLevel(dz);
   const S2 = slabAt(dz + b.size);
   c.beginPath(); slabRect(c, S2, bu - b.size / 2, bv - b.size / 2, bu + b.size / 2, bv + b.size / 2);
-  c.fillStyle = GREYS[Math.min(4, lvl + 2)]; c.fill();
+  c.fillStyle = col('#9A3F00', dz); c.fill();
   const S = slabAt(dz);
   c.beginPath(); slabRect(c, S, bu - b.size / 2, bv - b.size / 2, bu + b.size / 2, bv + b.size / 2);
-  c.fillStyle = GREYS[lvl]; c.fill();
-  // its shadow on the floor
+  inked(c, col(ORG, dz), Math.max(1.5, lineW(S.k)));
   c.beginPath(); slabRect(c, S, bu - b.size / 2, 0, bu + b.size / 2, 0.15);
-  c.fillStyle = GREYS[Math.min(4, lvl + 2)]; c.fill();
+  c.fillStyle = col(INK, dz, 0.6); c.fill();
   drawDecals(c, S, b);
 }
 
 function drawRotor(c, r, dz) {
   const S = slabAt(dz);
-  const lvl = fogLevel(dz);
-  const a0 = r.spun == null ? r.angle : r.spun;
+  const a0 = r.spun;
   for (let k = 0; k < 2; k++) {
     const a = a0 + k * Math.PI / 2;
     const dx = Math.cos(a), dy = Math.sin(a), px = -dy, py = dx;
@@ -1397,17 +1655,16 @@ function drawRotor(c, r, dz) {
       [r.u + dx * r.len - px * hw, r.v + dy * r.len - py * hw], [r.u - dx * r.len - px * hw, r.v - dy * r.len - py * hw]];
     pts.forEach(([u, v], i) => (i ? c.lineTo(sx(S, u, v), sy(S, u, v)) : c.moveTo(sx(S, u, v), sy(S, u, v))));
     c.closePath();
-    c.fillStyle = r.jam > 0 ? GREYS[Math.min(4, lvl + 1)] : GREYS[lvl]; c.fill();
+    inked(c, col(r.jam > 0 ? '#8A1050' : PNK, dz), Math.max(1.5, lineW(S.k)));
   }
   c.beginPath(); c.arc(sx(S, r.u, r.v), sy(S, r.u, r.v), Math.max(2, S.k * 0.9), 0, TAU);
-  c.fillStyle = '#000'; c.fill(); c.strokeStyle = GREYS[lvl]; c.lineWidth = lineW(S.k) * 0.6; c.stroke();
+  inked(c, col(ORG, dz), Math.max(1.5, lineW(S.k) * 0.8));
   if (r.jam > 0) gooBlob(c, sx(S, r.u, r.v), sy(S, r.u, r.v), S.k * 1.1, 3, world.t);
   drawDecals(c, S, r);
 }
 
 function drawCurtain(c, cu, dz) {
   const S = slabAt(dz);
-  const lvl = fogLevel(dz);
   const on = curtainOn(cu, world.t);
   c.beginPath();
   for (let u = cu.u0 + 0.6; u < cu.u1; u += 1.2) {
@@ -1416,17 +1673,16 @@ function drawCurtain(c, cu, dz) {
       c.moveTo(sx(S, u, v), sy(S, u, v)); c.lineTo(sx(S, u, Math.max(0, v - 1.2)), sy(S, u, Math.max(0, v - 1.2)));
     }
   }
-  c.strokeStyle = on ? GOO_C : GREYS[Math.min(4, lvl + 2)];
-  c.globalAlpha = on ? (lvl < 2 ? 0.9 : 0.6) : 0.5;
-  c.lineWidth = Math.max(1, S.k * (on ? 0.28 : 0.12)); c.stroke();
-  c.globalAlpha = 1;
+  c.lineCap = 'round';
+  if (on) { c.strokeStyle = INK; c.lineWidth = Math.max(2, S.k * 0.42); c.stroke(); }
+  c.strokeStyle = on ? GOO_C : col('#8C8C94', dz, 0.5);
+  c.lineWidth = Math.max(1, S.k * (on ? 0.28 : 0.1)); c.stroke();
   c.beginPath(); c.moveTo(sx(S, cu.u0, CFG.ceil), sy(S, cu.u0, CFG.ceil)); c.lineTo(sx(S, cu.u1, CFG.ceil), sy(S, cu.u1, CFG.ceil));
-  c.strokeStyle = GREYS[lvl]; c.lineWidth = lineW(S.k) * 1.5; c.stroke();
+  neon(c, col(PNK, dz), lineW(S.k) * 1.2);
 }
 
 function drawLaser(c, l, dz) {
   const S = slabAt(dz);
-  const lvl = fogLevel(dz);
   const st = laserState(l, world.t);
   const flick = st.warn && Math.floor(world.t * 30) % 2 === 0;
   const bands = [[l.split, CFG.ceil], [0, l.split]];
@@ -1438,12 +1694,11 @@ function drawLaser(c, l, dz) {
         c.moveTo(sx(S, u, v), sy(S, u, v)); c.lineTo(sx(S, u + 0.9, v), sy(S, u + 0.9, v));
       }
     }
-    c.strokeStyle = lit ? GREYS[lvl] : GREYS[4];
-    c.lineWidth = Math.max(1, S.k * (lit ? 0.16 : 0.06)); c.stroke();
+    if (lit) neon(c, col(PNK, dz), Math.max(1, S.k * 0.14), dz < 80 ? '#FFFFFF' : null);
+    else { c.strokeStyle = col(PNK, dz, 0.18); c.lineWidth = Math.max(1, S.k * 0.05); c.stroke(); }
   });
-  // frame posts
   c.beginPath(); slabRect(c, S, -CFG.halfW, 0, CFG.halfW, CFG.ceil);
-  c.strokeStyle = GREYS[Math.min(4, lvl + 1)]; c.lineWidth = lineW(S.k); c.stroke();
+  c.strokeStyle = col(PNK, dz); c.lineWidth = lineW(S.k); c.stroke();
 }
 
 function drawZones(c, T, list) {
@@ -1465,7 +1720,7 @@ function drawZone(c, z, dz, item) {
         seg3(c, d, u, v, d, u, Math.min(CFG.ceil, v + 1.2));
       }
     }
-    c.strokeStyle = '#909090'; c.lineWidth = 1.5;
+    neon(c, CYN, 2);
   } else if (z.kind === 'wind') {
     for (let s = Math.ceil((cam.s + dz) / 5) * 5; s < cam.s + d1; s += 5) {
       const d = s - cam.s;
@@ -1474,7 +1729,7 @@ function drawZone(c, z, dz, item) {
         seg3(c, d, u, v, d, u + z.dir * 1.8, v);
       }
     }
-    c.strokeStyle = '#7a7a7a'; c.lineWidth = 1.5;
+    c.strokeStyle = 'rgba(244,244,244,0.75)'; c.lineWidth = 2; c.stroke();
   } else if (z.kind === 'lowg') {
     for (let s = Math.ceil((cam.s + dz) / 6) * 6; s < cam.s + d1; s += 6) {
       const d = s - cam.s;
@@ -1483,10 +1738,10 @@ function drawZone(c, z, dz, item) {
         seg3(c, d, u, v + bob, d, u + 0.15, v + bob);
       }
     }
-    c.strokeStyle = '#6c6c6c'; c.lineWidth = 2;
+    c.strokeStyle = CYN; c.lineWidth = 3; c.lineCap = 'round'; c.stroke();
   }
-  c.stroke();
 }
+
 
 // ============================================================================================
 // RACER_DEFS — the eight idiots: stats (speed / flap / goo / weight, 1-5) and AI personality
@@ -1501,6 +1756,9 @@ const RACERS = [
   { name: 'EL BUBBLO', shape: 'puffer', stats: [3, 2, 3, 5], bio: 'A PUFFERFISH LUCHADOR. LOVES A GOOD SHOVE.', ai: { aggr: 0.6, greed: 0.3, swoop: 0.3, bully: 1 }, bark: 'OLE!' },
   { name: 'COUNT CRUMB', shape: 'cookie', stats: [4, 3, 4, 3], bio: 'A VAMPIRE COOKIE. YOUR NEMESIS. TOUGH COOKIE.', ai: { aggr: 0.8, greed: 0.5, swoop: 0.5 }, bark: 'CRUMBLED!' },
 ];
+// One vivid colour each, never lime (lime is goo). Blorp is the leftover white Pong pixel.
+const RACER_COLORS = ['#F4F4F4', '#FFD23F', '#FF7A1A', '#A45BFF', '#19D3C5', '#18A558', '#2E9BFF', '#FF3B4E'];
+RACERS.forEach((r, i) => { r.color = RACER_COLORS[i]; });
 function statMul(def) {
   const [sp, fl, go, wt] = def.stats;
   return { spd: 1 + (sp - 3) * 0.02, flap: 1 + (fl - 3) * 0.04, goo: 1 + (go - 3) * 0.1, wt };
@@ -1522,7 +1780,7 @@ function drawRacerArt(c, def, x, y, size, o) {
   if (o.roll) c.rotate(o.roll);
   if (o.stun) c.rotate(Math.sin(t * 30) * 0.6);
   if (o.alpha != null) c.globalAlpha *= o.alpha;
-  c.lineWidth = lw; c.strokeStyle = ink; c.fillStyle = '#000';
+  c.lineWidth = o.fill ? lw * 1.15 : lw; c.strokeStyle = ink; c.fillStyle = o.fill || '#000';
   c.lineJoin = 'round'; c.lineCap = 'round';
   if (o.ghost) c.setLineDash([size * 0.08, size * 0.06]);
   const flap = o.flap || 0;
@@ -1634,7 +1892,7 @@ function drawRacerArt(c, def, x, y, size, o) {
     c.setLineDash([size * 0.1, size * 0.07]);
     c.lineDashOffset = -t * 40;
     c.beginPath(); c.arc(0, -s * 0.1, s * 1.25, 0, TAU);
-    c.strokeStyle = ink; c.lineWidth = Math.max(1, lw * 0.7); c.stroke();
+    c.strokeStyle = o.fill ? CYN : ink; c.lineWidth = Math.max(1, lw * (o.fill ? 1 : 0.7)); c.stroke();
     c.setLineDash([]);
   }
   c.restore();
@@ -2256,7 +2514,7 @@ function drawEnt(c, e, dz) {
     // a stinky sock with fly wings: an L shape and two flicking wing lines
     c.save(); c.translate(PT.x, PT.y);
     const s = Math.max(4, k * 0.9);
-    c.strokeStyle = GREYS[lvl]; c.fillStyle = '#000'; c.lineWidth = Math.max(1.5, s * 0.12);
+    c.strokeStyle = INK; c.fillStyle = col(WHT, dz); c.lineWidth = Math.max(2, s * 0.16);
     c.beginPath(); c.moveTo(-s * 0.3, -s); c.lineTo(s * 0.2, -s); c.lineTo(s * 0.2, s * 0.2); c.lineTo(s * 0.7, s * 0.2); c.lineTo(s * 0.7, s * 0.6); c.lineTo(-s * 0.3, s * 0.6); c.closePath(); c.fill(); c.stroke();
     const w = Math.sin(world.t * 60) * s * 0.4;
     c.beginPath(); c.moveTo(-s * 0.3, -s * 0.6); c.lineTo(-s * 1.0, -s * 0.9 - w); c.moveTo(s * 0.2, -s * 0.6); c.lineTo(s * 0.9, -s * 0.9 - w); c.stroke();
@@ -2309,9 +2567,10 @@ function drawPart(c, p, dz) {
   if (p.kind === 'goo') { c.fillStyle = GOO_C; c.fillRect(PT.x - s / 2, PT.y - s / 2, s, s); }
   else if (p.kind === 'shard') {
     c.save(); c.translate(PT.x, PT.y); c.rotate(p.spin);
-    c.fillStyle = GREYS[fogLevel(dz)]; c.fillRect(-s, -s * 0.4, s * 2, s * 0.8); c.restore();
-  } else if (p.kind === 'coin') { c.fillStyle = '#fff'; c.fillRect(PT.x - s, PT.y - s, s * 2, s * 2); }
-  else { c.fillStyle = p.kind === 'spark' ? '#fff' : '#909090'; c.fillRect(PT.x - s / 2, PT.y - s / 2, s, s); }
+    c.fillStyle = INK; c.fillRect(-s - 1, -s * 0.4 - 1, s * 2 + 2, s * 0.8 + 2);
+    c.fillStyle = col(THEME.gate.hatch, dz); c.fillRect(-s, -s * 0.4, s * 2, s * 0.8); c.restore();
+  } else if (p.kind === 'coin') { c.fillStyle = YEL; c.fillRect(PT.x - s, PT.y - s, s * 2, s * 2); }
+  else { c.fillStyle = p.kind === 'spark' ? (p.spin % 2 < 1 ? CYN : YEL) : 'rgba(200,200,210,0.8)'; c.fillRect(PT.x - s / 2, PT.y - s / 2, s, s); }
   c.globalAlpha = 1;
 }
 const POP_SIZES = { big: 11, mid: 8, small: 5 };
@@ -2349,6 +2608,7 @@ const game = {
 function setupRace(trackIdx, opts) {
   opts = opts || {};
   TRACK = buildTrack(trackIdx, { mirror: game.mirror, diff: game.diff });
+  THEME = TRACK.def.theme;
   world = {
     t: 0, racers: [], globs: [], ents: [], parts: [], popups: [], wind: [], barks: [], decalList: [],
     state: 'countdown', countdown: 3.2, lastBeep: 4, score: 0, scoreBy: {}, gateStreak: 0, coinStreak: 0, combo: 0, comboT: -9,
@@ -2658,23 +2918,30 @@ function applyCamera(sOverride, vOverride) {
 // ============================================================================================
 function drawRival(c, r, dz) {
   projectDz(dz, r.u, r.v, PT);
+  const x = PT.x, y = PT.y;
   const size = clamp(PT.k * 3.0, 6, 380);   // drawn larger than the 1.4 u hitbox so racers read at a glance
-  const lvl = fogLevel(dz);
   const blink = r.invuln > 0 && Math.floor(world.t * 12) % 2 === 0;
-  drawRacerArt(c, r.def, PT.x, PT.y, size, {
+  if (THEME.ground.kind !== 'none') {
+    // ground shadow: an ink ellipse straight below, which doubles as an altitude cue
+    projectDz(dz, r.u, 0.03, PT2);
+    c.fillStyle = 'rgba(11,11,18,0.45)';
+    c.beginPath(); c.ellipse(PT2.x, PT2.y, size * 0.34, size * 0.08, cam.roll, 0, TAU); c.fill();
+  }
+  drawRacerArt(c, r.def, x, y, size, {
     flap: r.flapAnim, stun: r.stun > 0, goo: r.goop > 0, shield: r.shield > 0, ghost: r.ghost > 0,
-    splats: r.splats, color: GREYS[lvl], roll: cam.roll + r.vu * 0.02, alpha: blink ? 0.45 : 1,
+    splats: r.splats, color: INK, fill: col(r.def.color, dz), roll: cam.roll + r.vu * 0.02, alpha: blink ? 0.45 : 1,
   });
   const npx = clamp(size * 0.045, 1, 6);
-  const ny = PT.y - size * 0.62 - npx * 8;
-  if (dz < 110) world.tags.push({ dz, x: PT.x, y: ny, px: npx, text: String(r.idx + 1), color: GREYS[lvl], place: world.attract ? null : r.place });
+  const ny = y - size * 0.62 - npx * 8;
+  if (dz < 110) world.tags.push({ dz, x, y: ny, px: npx, text: String(r.idx + 1), color: WHT, border: r.def.color, place: world.attract ? null : r.place });
   const b = world.barks.find((bb) => bb.r === r);
   if (b && dz < 90) {
     const tw = textWidth(b.text, 2) + 14;
-    const bx = PT.x - tw / 2, by = ny - 28;
-    c.fillStyle = '#fff'; c.fillRect(bx, by, tw, 22);
-    c.beginPath(); c.moveTo(PT.x - 5, by + 22); c.lineTo(PT.x + 5, by + 22); c.lineTo(PT.x, by + 30); c.fill();
-    blockText(c, b.text, PT.x, by + 4, 2, { align: 'center', color: '#000' });
+    const bx = x - tw / 2, by = ny - 30;
+    c.fillStyle = WHT; c.fillRect(bx, by, tw, 22);
+    c.beginPath(); c.moveTo(x - 5, by + 22); c.lineTo(x + 5, by + 22); c.lineTo(x, by + 30); c.fill();
+    c.strokeStyle = INK; c.lineWidth = 2; c.strokeRect(bx, by, tw, 22);
+    blockText(c, b.text, x, by + 4, 2, { align: 'center', color: INK });
   }
 }
 
@@ -2721,6 +2988,7 @@ function renderWorld(c) {
 
 // Rival number tags, nearest first; a tag that would overlap a nearer one is skipped.
 function drawTags(c) {
+  if (game.scene === 'results' || game.scene === 'standings') return;   // panels sit on top there
   const placed = [];
   const tags = world.tags.sort((a, b) => a.dz - b.dz);
   let ordinals = 0;
@@ -2732,10 +3000,16 @@ function drawTags(c) {
     const box = [t.x - w / 2, t.y - t.px, w + ow, h];
     if (placed.some((b) => box[0] < b[0] + b[2] && b[0] < box[0] + box[2] && box[1] < b[1] + b[3] && b[1] < box[1] + box[3])) continue;
     placed.push(box);
-    blockText(c, t.text, t.x, t.y, t.px, { align: 'center', color: t.color, outline: t.px * 0.6 });
+    // number plate: ink, chamfered, bordered in the racer's own colour
+    const px0 = t.x - w / 2, py0 = t.y - t.px, cf = t.px * 1.2;
+    c.beginPath();
+    c.moveTo(px0 + cf, py0); c.lineTo(px0 + w, py0); c.lineTo(px0 + w, py0 + h - cf); c.lineTo(px0 + w - cf, py0 + h); c.lineTo(px0, py0 + h); c.lineTo(px0, py0 + cf); c.closePath();
+    c.fillStyle = INK; c.fill();
+    if (t.border) { c.strokeStyle = t.border; c.lineWidth = Math.max(1, t.px * 0.45); c.stroke(); }
+    blockText(c, t.text, t.x, t.y, t.px, { align: 'center', color: t.color });
     if (withOrd) {
       ordinals++;
-      blockText(c, ORD[t.place], t.x + w / 2 + 2, t.y + t.px * 3, opx, { color: t.color, outline: 1 });
+      blockText(c, ORD[t.place], t.x + w / 2 + 3, t.y + t.px * 3, opx, { color: WHT, outline: Math.max(1, opx * 0.6), outlineColor: INK });
     }
   }
 }
@@ -2796,26 +3070,35 @@ function drawPlayerCraft(c) {
   const [x, y] = craftScreen();
   const blink = p.invuln > 0 && Math.floor(world.t * 12) % 2 === 0;
   if (p.diveT > 0.1) {
-    // dive-charge sparks trailing upward: teal is not allowed, so white then goo green at tier 2
+    // dive-charge sparks trailing upward: cyan, turning yellow once the big swoop is charged
     const tier2 = p.diveT >= CFG.swoopTiers[1][0];
-    c.fillStyle = tier2 ? GOO_C : '#fff';
+    c.fillStyle = tier2 ? YEL : CYN;
     const rng = mulberry32(Math.floor(world.t * 30));
     for (let i = 0; i < (tier2 ? 14 : 8); i++) c.fillRect(x + (rng() - 0.5) * 140, y - 60 - rng() * 70, 4, 10);
   }
-  drawRacerArt(c, p.def, x, y, 150, {
-    flap: p.flapAnim, stun: p.stun > 0, goo: p.goop > 0, shield: p.shield > 0, ghost: p.ghost > 0,
-    splats: p.splats, roll: clamp(p.vu / CFG.latMax, -1, 1) * 0.28 + clamp(-p.vv * 0.012, -0.1, 0.1) * 0, alpha: blink ? 0.4 : 1,
-  });
   if (p.boostT > 0) {
-    // boost flame: a stream of goo-green blocks pouring out under the craft
+    // boost flame: cyan blocks pouring out under the craft, orange on a mega boost
     const rng = mulberry32(Math.floor(world.t * 40));
-    for (let i = 0; i < 14; i++) {
+    const hot = p.boostMul >= 1.42 ? ORG : CYN;
+    for (let i = 0; i < 16; i++) {
       const d = rng();
-      c.fillStyle = d < 0.3 ? '#fff' : GOO_C;
-      const s = 10 - d * 6;
-      c.fillRect(x - 16 + rng() * 32 - s / 2, y + 48 + d * 70, s, s * 1.4);
+      c.fillStyle = d < 0.25 ? WHT : hot;
+      const s = 11 - d * 6;
+      c.fillRect(x - 18 + rng() * 36 - s / 2, y + 46 + d * 76, s, s * 1.4);
     }
   }
+  // the player's halo: a hollow neon yellow rectangle, a nod to the inspiration's bat
+  c.save(); c.translate(x, y); c.rotate(clamp(p.vu / CFG.latMax, -1, 1) * 0.18);
+  c.beginPath(); c.rect(-98, -70, 196, 128);
+  c.lineWidth = 7; c.strokeStyle = INK; c.globalAlpha = 0.6; c.stroke(); c.globalAlpha = 1;
+  neon(c, YEL, 3);
+  c.beginPath(); c.moveTo(-12, 70); c.lineTo(0, 82); c.lineTo(12, 70);
+  c.lineWidth = 4; c.strokeStyle = YEL; c.stroke();
+  c.restore();
+  drawRacerArt(c, p.def, x, y, 150, {
+    flap: p.flapAnim, stun: p.stun > 0, goo: p.goop > 0, shield: p.shield > 0, ghost: p.ghost > 0,
+    splats: p.splats, color: INK, fill: p.def.color, roll: clamp(p.vu / CFG.latMax, -1, 1) * 0.28, alpha: blink ? 0.4 : 1,
+  });
 }
 
 function drawSpeedDashes(c) {
@@ -2877,7 +3160,8 @@ function drawPopups(c) {
     const px = POP_SIZES[pp.size];
     c.save(); c.globalAlpha = a;
     c.translate(W / 2, rows[pp.size] + px * 3.5); c.scale(sc, sc);
-    blockText(c, pp.text, 0, -px * 3.5, px, { align: 'center', color: '#fff', outline: px * 0.5, shadow: px * 0.6, skew: 0.15 });
+    const bonk = pp.text.startsWith('BONK');
+    blockText(c, pp.text, 0, -px * 3.5, px, { align: 'center', color: bonk ? PNK : YEL, outline: px * 0.55, outlineColor: INK, shadow: px * 0.9, shadowColor: bonk ? WHT : PNK, skew: 0.15 });
     c.restore();
   }
 }
@@ -2934,107 +3218,136 @@ function drawItemIcon(c, it, x, y, size) {
   c.restore();
 }
 
+// A chamfered ink plate with a neon border: every HUD cluster sits on one, so it reads on any sky.
+function plate(c, x, y, w, h, border) {
+  const cf = 10;
+  c.beginPath();
+  c.moveTo(x + cf, y); c.lineTo(x + w, y); c.lineTo(x + w, y + h - cf); c.lineTo(x + w - cf, y + h); c.lineTo(x, y + h); c.lineTo(x, y + cf); c.closePath();
+  c.fillStyle = 'rgba(11,11,18,0.74)'; c.fill();
+  c.lineWidth = 2; c.strokeStyle = border || PNK; c.stroke();
+}
+// HUD lettering: block font with an ink keyline and a hard ink drop shadow.
+function hudText(c, text, x, y, px, color, align) {
+  return blockText(c, text, x, y, px, { align: align || 'left', color, outline: Math.max(1.5, px * 0.5), outlineColor: INK, shadow: Math.max(2, px * 0.7), shadowColor: INK });
+}
+
 function drawHUD(c) {
   const w = world, p = w.player, T = TRACK;
   const raceLen = CFG.laps * T.L;
-  // ---- scoreboard: POS | LAP in giant Pong numerals with a dashed net between them
   const pos = p.place + 1;
   const lap = Math.min(CFG.laps, Math.floor(Math.max(0, p.dist) / T.L) + 1);
-  blockText(c, String(pos), W / 2 - 52, 20, 16, { align: 'right', color: '#fff', shadow: 5 });
-  blockText(c, ORD[p.place].slice(1), W / 2 - 46, 22, 3, { color: '#fff' });
-  blockText(c, '/8', W / 2 - 46, 50, 3, { color: '#909090' });
-  blockText(c, String(lap), W / 2 + 52, 20, 16, { color: '#fff', shadow: 5 });
-  blockText(c, '/' + CFG.laps, W / 2 + 52 + 86, 22, 3, { color: '#909090' });
-  c.fillStyle = '#fff';
+  // ---- the scoreboard: POS | LAP in giant Pong numerals with a dashed net between them
+  plate(c, W / 2 - 236, 10, 472, 196);
+  hudText(c, String(pos), W / 2 - 52, 20, 16, YEL, 'right');
+  hudText(c, ORD[p.place].slice(1), W / 2 - 46, 22, 3, YEL);
+  hudText(c, '/8', W / 2 - 46, 50, 3, WHT);
+  hudText(c, String(lap), W / 2 + 52, 20, 16, WHT);
+  hudText(c, '/' + CFG.laps, W / 2 + 52 + 86, 22, 3, WHT);
+  c.fillStyle = WHT;
   for (let y = 18; y < 134; y += 16) c.fillRect(W / 2 - 3, y, 6, 9);
-  blockText(c, 'POS', W / 2 - 52, 140, 2, { align: 'right', color: '#909090' });
-  blockText(c, 'LAP', W / 2 + 52, 140, 2, { color: '#909090' });
-  // ---- progress strip
+  hudText(c, 'POS', W / 2 - 52, 140, 2, CYN, 'right');
+  hudText(c, 'LAP', W / 2 + 52, 140, 2, CYN);
+  // progress strip: everyone's place along the whole race, you tallest
   const sx0 = W / 2 - 210, sw = 420, sy0 = 166;
   const finalLap = lap === CFG.laps && !p.finished;
   const blinkOn = !finalLap || Math.floor(w.t * 4) % 2 === 0;
-  c.fillStyle = blinkOn ? '#fff' : '#585858';
+  c.fillStyle = blinkOn ? WHT : PNK;
   c.fillRect(sx0, sy0, sw, 2);
   for (let k = 1; k < CFG.laps; k++) for (let y = -8; y < 10; y += 6) c.fillRect(sx0 + sw * k / CFG.laps - 1, sy0 + y, 2, 3);
   c.fillRect(sx0 + sw - 2, sy0 - 8, 4, 18);
   for (const r of w.racers) {
-    const f = clamp(r.dist / raceLen, 0, 1);
-    const x = sx0 + f * sw;
-    if (r === p) { c.fillStyle = '#fff'; c.fillRect(x - 3, sy0 - 12, 6, 26); }
-    else { c.fillStyle = r.nemesis ? '#c8c8c8' : '#7a7a7a'; c.fillRect(x - 2, sy0 - 6, 4, 14); }
+    if (r === p) continue;
+    const x = sx0 + clamp(r.dist / raceLen, 0, 1) * sw;
+    c.fillStyle = INK; c.fillRect(x - 3, sy0 - 7, 6, 16);
+    c.fillStyle = r.def.color; c.fillRect(x - 2, sy0 - 6, 4, 14);
   }
-  // ---- top left: time and score
-  blockText(c, fmtTime(raceTime()), 30, 26, 5, { color: '#fff', shadow: 3 });
-  blockText(c, 'SCORE', 30, 74, 2, { color: '#909090' });
-  blockText(c, String(w.score), 30, 92, 4, { color: '#fff' });
-  // under the strip: which race this is and what it takes to go on
+  const px1 = sx0 + clamp(p.dist / raceLen, 0, 1) * sw;
+  c.fillStyle = INK; c.fillRect(px1 - 4, sy0 - 13, 8, 28);
+  c.fillStyle = YEL; c.fillRect(px1 - 3, sy0 - 12, 6, 26);
   const cup = game.cup;
   const what = (cup && cup.mode === 'cup' ? 'RACE ' + (cup.race + 1) + '/5 · ' : '') + T.def.name + (cup && cup.mode === 'cup' ? ' · TOP 5 ADVANCE' : '');
-  blockText(c, what, W / 2, 184, 2, { align: 'center', color: '#909090' });
+  hudText(c, what, W / 2, 184, 2, CYN, 'center');
+  // ---- top left: time and score
+  plate(c, 16, 14, 250, 112);
+  hudText(c, fmtTime(raceTime()), 30, 26, 5, WHT);
+  hudText(c, 'SCORE', 30, 74, 2, CYN);
+  hudText(c, String(w.score), 30, 92, 4, YEL);
   // ---- top right: coins and retry tokens
-  c.fillStyle = '#fff'; c.fillRect(W - 168, 28, 26, 26);
-  blockText(c, 'x' + p.coins, W - 30, 26, 5, { align: 'right', color: '#fff', shadow: 3 });
-  blockText(c, 'COINS', W - 30, 66, 2, { align: 'right', color: '#585858' });
-  if (game.cup && game.cup.mode === 'cup') {
+  const inCup = game.cup && game.cup.mode === 'cup';
+  plate(c, W - 206, 14, 190, inCup ? 132 : 76);
+  c.fillStyle = INK; c.fillRect(W - 194, 26, 30, 30);
+  c.fillStyle = YEL; c.fillRect(W - 191, 29, 24, 24);
+  hudText(c, 'x' + p.coins, W - 30, 26, 5, WHT, 'right');
+  hudText(c, 'COINS', W - 30, 66, 2, CYN, 'right');
+  if (inCup) {
     for (let i = 0; i < CFG.tokens; i++) {
       const x = W - 50 - i * 34, y = 98;
       const on = i < game.cup.tokens;
-      c.strokeStyle = on ? '#fff' : '#3a3a3a'; c.lineWidth = 4; c.lineCap = 'square';
-      c.beginPath(); c.moveTo(x - 9, y + 16); c.lineTo(x + 5, y + 2); c.stroke();          // wrench handle
-      c.beginPath(); c.arc(x + 8, y - 1, 7, Math.PI * 0.75, Math.PI * 2.25); c.stroke();   // wrench jaw
+      c.lineCap = 'square';
+      for (const [lw2, colr] of [[7, INK], [4, on ? WHT : '#4A4A55']]) {
+        c.strokeStyle = colr; c.lineWidth = lw2;
+        c.beginPath(); c.moveTo(x - 9, y + 16); c.lineTo(x + 5, y + 2); c.stroke();
+        c.beginPath(); c.arc(x + 8, y - 1, 7, Math.PI * 0.75, Math.PI * 2.25); c.stroke();
+      }
     }
-    blockText(c, 'RETRIES', W - 30, 124, 2, { align: 'right', color: '#585858' });
+    hudText(c, 'RETRIES', W - 30, 124, 2, CYN, 'right');
   }
-  // ---- left edge: the race order, top 3 and you, the player inverted
+  // ---- left edge: the race order, top 3 and you, the player highlighted
   const lx = 30, ly = 150;
-  blockText(c, 'ORDER', lx, ly, 2, { color: '#585858' });
   const rows = w.order.slice(0, 3);
   if (p.place > 2) rows.push(p);
+  plate(c, 16, ly - 12, 200, 40 + rows.length * 30 + (p.place > 2 ? 12 : 0));
+  hudText(c, 'ORDER', lx, ly, 2, CYN);
   rows.forEach((r, k) => {
     const y = ly + 26 + k * 30 + (k === 3 ? 12 : 0);
     const me = r === p;
     const label = (r.place + 1) + ' ' + (me ? 'YOU' : r.def.name.split(' ').pop());
-    if (me) { c.fillStyle = '#fff'; c.fillRect(lx - 6, y - 6, 172, 26); }
-    blockText(c, label, lx, y, 2, { color: me ? '#000' : r.goop > 0 ? GOO_C : '#c8c8c8' });
+    if (me) { c.fillStyle = YEL; c.fillRect(lx - 6, y - 6, 172, 26); blockText(c, label, lx, y, 2, { color: INK }); }
+    else {
+      c.fillStyle = r.def.color; c.fillRect(lx - 6, y - 4, 4, 18);
+      hudText(c, label, lx, y, 2, r.goop > 0 ? GOO_C : WHT);
+    }
   });
-  if (p.place > 3) blockText(c, '...', lx, ly + 26 + 3 * 30 - 8, 2, { color: '#585858' });
+  if (p.place > 3) hudText(c, '...', lx, ly + 26 + 3 * 30 - 8, 2, WHT);
   // ---- bottom left: item slot and goo tank
   const ix = 30, iy = H - 122, isz = 86;
-  c.fillStyle = '#000'; c.fillRect(ix, iy, isz, isz);
-  strokeBox(c, ix, iy, isz, isz, 4, '#fff');
+  plate(c, 16, iy - 32, 160, isz + 62);
+  c.fillStyle = INK; c.fillRect(ix, iy, isz, isz);
+  strokeBox(c, ix, iy, isz, isz, 4, p.item || p.roll > 0 ? YEL : WHT);
   if (p.roll > 0) {
     const keys = Object.keys(ITEMS);
     drawItemIcon(c, keys[Math.floor(w.t * 14) % keys.length], ix + isz / 2, iy + isz / 2, isz * 0.8);
   } else if (p.item) {
     drawItemIcon(c, p.item, ix + isz / 2, iy + isz / 2, isz * 0.8);
-    blockText(c, ITEMS[p.item].name, ix, iy - 22, 2, { color: '#fff' });
-  }
-  blockText(c, game.scheme === 'mouse' ? 'WHEEL' : 'E', ix + isz / 2, iy + isz + 8, 2, { align: 'center', color: '#585858' });
+    hudText(c, ITEMS[p.item].name, ix, iy - 22, 2, YEL);
+  } else hudText(c, 'ITEM', ix, iy - 22, 2, CYN);
+  hudText(c, game.scheme === 'mouse' ? 'WHEEL' : 'E', ix + isz / 2, iy + isz + 8, 2, CYN, 'center');
   const tx = ix + isz + 16, th = isz, tw = 24;
-  c.fillStyle = '#000'; c.fillRect(tx, iy, tw, th);
+  c.fillStyle = INK; c.fillRect(tx, iy, tw, th);
   const fill = (p.tank / CFG.tank) * (th - 8);
-  c.fillStyle = p.geyser > 0 && Math.floor(w.t * 10) % 2 ? '#fff' : GOO_C;
+  c.fillStyle = p.geyser > 0 && Math.floor(w.t * 10) % 2 ? WHT : GOO_C;
   c.fillRect(tx + 4, iy + th - 4 - fill, tw - 8, fill);
-  strokeBox(c, tx, iy, tw, th, 3, '#fff');
-  blockText(c, 'GOO', tx + tw / 2, iy + isz + 8, 2, { align: 'center', color: '#585858' });
+  strokeBox(c, tx, iy, tw, th, 3, WHT);
+  hudText(c, 'GOO', tx + tw / 2, iy + isz + 8, 2, CYN, 'center');
   // ---- bottom right: boost meter (dive charge) and speed
   const bx = W - 30 - 10 * 22, by = H - 66;
+  plate(c, bx - 16, by - 76, 10 * 22 + 30, 122);
   const charge = p.boostT > 0 ? 1 : clamp(p.diveT / CFG.swoopTiers[1][0], 0, 1);
   const lit = Math.round(charge * 10);
   for (let i = 0; i < 10; i++) {
     const on = i < lit;
     const tierMark = i === Math.round(CFG.swoopTiers[0][0] / CFG.swoopTiers[1][0] * 10) - 1 || i === 9;
-    c.fillStyle = on ? (p.boostT > 0 && Math.floor(w.t * 16) % 2 ? GOO_C : '#fff') : '#202020';
+    c.fillStyle = on ? (p.boostT > 0 ? (Math.floor(w.t * 16) % 2 ? ORG : YEL) : CYN) : '#22222C';
     c.fillRect(bx + i * 22, by, 18, 26);
-    if (tierMark) { c.fillStyle = '#909090'; c.fillRect(bx + i * 22, by + 30, 18, 3); }
+    if (tierMark) { c.fillStyle = WHT; c.fillRect(bx + i * 22, by + 30, 18, 3); }
   }
-  blockText(c, p.boostT > 0 ? 'BOOST' : p.diveT > 0.1 ? 'CHARGE' : 'SWOOP', bx, by - 20, 2, { color: '#585858' });
-  blockText(c, Math.round(p.speed * 3.6) + ' GPH', W - 30, by - 62, 4, { align: 'right', color: '#fff', shadow: 3 });
+  hudText(c, p.boostT > 0 ? 'BOOST!' : p.diveT > 0.1 ? 'CHARGE' : 'SWOOP', bx, by - 20, 2, p.boostT > 0 ? ORG : CYN);
+  hudText(c, Math.round(p.speed * 3.6) + ' GPH', W - 30, by - 64, 4, WHT, 'right');
   // ---- bottom centre: the rear-view mirror strip
   const mx = W / 2 - 180, my = H - 54, mw = 360, mh = 40;
-  c.fillStyle = '#000'; c.fillRect(mx, my, mw, mh);
-  strokeBox(c, mx, my, mw, mh, 2, '#585858');
-  blockText(c, 'REAR VIEW', mx + 6, my - 16, 2, { color: '#585858' });
+  c.fillStyle = 'rgba(11,11,18,0.85)'; c.fillRect(mx, my, mw, mh);
+  strokeBox(c, mx, my, mw, mh, 2, CYN);
+  hudText(c, 'REAR VIEW', mx + 6, my - 18, 2, CYN);
   c.save(); c.beginPath(); c.rect(mx + 2, my + 2, mw - 4, mh - 4); c.clip();
   for (const r of w.racers) {
     if (r === p) continue;
@@ -3042,7 +3355,7 @@ function drawHUD(c) {
     if (back < 0 || back > 80) continue;
     const near01 = 1 - back / 80;
     const px = 1 + Math.round(near01 * 3);
-    blockText(c, String(r.idx + 1), mx + mw / 2 + clamp(r.u - p.u, -12, 12) * 13, my + mh / 2 - px * 3.5, px, { align: 'center', color: GREYS[Math.min(4, Math.floor((1 - near01) * 4))] });
+    blockText(c, String(r.idx + 1), mx + mw / 2 + clamp(r.u - p.u, -12, 12) * 13, my + mh / 2 - px * 3.5, px, { align: 'center', color: r.def.color });
   }
   c.fillStyle = GOO_C;
   for (const g of w.globs) {
@@ -3051,18 +3364,19 @@ function drawHUD(c) {
     if (back < 0 || back > 80) continue;
     c.fillRect(mx + mw / 2 + clamp(g.u - p.u, -12, 12) * 13 - 3, my + mh / 2 - 3, 6, 6);
   }
-  for (const e of w.ents) if (e.kind === 'sock' && gap(e.dist, p.dist) > 0 && gap(e.dist, p.dist) < 80) { c.fillRect(mx + mw / 2 + clamp(e.u - p.u, -12, 12) * 13 - 5, my + 8, 10, 10); }
+  for (const e of w.ents) if (e.kind === 'sock' && gap(e.dist, p.dist) > 0 && gap(e.dist, p.dist) < 80) { c.fillStyle = PNK; c.fillRect(mx + mw / 2 + clamp(e.u - p.u, -12, 12) * 13 - 5, my + 8, 10, 10); }
   c.restore();
-  // ---- incoming warning chevron at the screen edge
+  // ---- incoming warning chevron at the screen edge (pink: it hurts)
   if (w.incoming && Math.floor(w.t * 10) % 2 === 0) {
     const ex = w.warnSide < 0 ? 70 : W - 70;
-    c.fillStyle = GOO_C;
-    c.beginPath();
     const d = w.warnSide < 0 ? -1 : 1;
-    c.moveTo(ex + d * 26, 360); c.lineTo(ex - d * 6, 330); c.lineTo(ex - d * 6, 348); c.lineTo(ex - d * 26, 348); c.lineTo(ex - d * 26, 372); c.lineTo(ex - d * 6, 372); c.lineTo(ex - d * 6, 390); c.closePath(); c.fill();
-    blockText(c, 'INCOMING', ex, 400, 2, { align: 'center', color: GOO_C });
+    c.beginPath();
+    c.moveTo(ex + d * 26, 360); c.lineTo(ex - d * 6, 330); c.lineTo(ex - d * 6, 348); c.lineTo(ex - d * 26, 348); c.lineTo(ex - d * 26, 372); c.lineTo(ex - d * 6, 372); c.lineTo(ex - d * 6, 390); c.closePath();
+    inked(c, PNK, 4);
+    hudText(c, 'INCOMING', ex, 400, 2, PNK, 'center');
   }
 }
+
 
 // ============================================================================================
 // CUP — grand prix progression: points, retry tokens, standings, trophies and the mirror unlock
@@ -3108,13 +3422,16 @@ function menuNav(state, ids) {
 function drawButton(c, id, label, x, y, w, h, selected, opts) {
   uiRect(id, x, y, w, h);
   const o = opts || {};
-  if (selected) { c.fillStyle = '#fff'; c.fillRect(x, y, w, h); }
-  else { c.fillStyle = '#000'; c.fillRect(x, y, w, h); strokeBox(c, x, y, w, h, 2, o.dim ? '#3a3a3a' : '#585858'); }
+  if (selected) {
+    c.fillStyle = PNK; c.fillRect(x + 5, y + 5, w, h);   // hard pink offset shadow
+    c.fillStyle = YEL; c.fillRect(x, y, w, h);
+    strokeBox(c, x, y, w, h, 3, INK);
+  } else { c.fillStyle = 'rgba(11,11,18,0.88)'; c.fillRect(x, y, w, h); strokeBox(c, x, y, w, h, 2, o.dim ? '#3a3a44' : PNK); }
   const px = o.px || 3;
-  blockText(c, label, x + w / 2, y + h / 2 - px * 3.5, px, { align: 'center', color: selected ? '#000' : o.dim ? '#585858' : '#fff' });
+  blockText(c, label, x + w / 2, y + h / 2 - px * 3.5, px, { align: 'center', color: selected ? INK : o.dim ? '#5a5a66' : WHT });
   if (selected && o.arrows) {
-    blockText(c, '<', x + 14, y + h / 2 - px * 3.5, px, { color: '#000' });
-    blockText(c, '>', x + w - 14, y + h / 2 - px * 3.5, px, { align: 'right', color: '#000' });
+    blockText(c, '<', x + 14, y + h / 2 - px * 3.5, px, { color: INK });
+    blockText(c, '>', x + w - 14, y + h / 2 - px * 3.5, px, { align: 'right', color: INK });
   }
 }
 function smallText(c, text, x, y, size, color, align) {
@@ -3167,7 +3484,7 @@ function startRaceScene(trackIdx) {
 
 // ---- TITLE: a live attract race behind a giant logo and the main menu
 const TITLE_ITEMS = ['start', 'quick', 'scheme', 'diff', 'howto'];
-function makeAttract() { reseed(4242); setupRace(0, { attract: true }); world.state = 'run'; startGo(); }
+function makeAttract() { reseed(4242); setupRace(1, { attract: true }); world.state = 'run'; startGo(); }
 
 const SCENES = {
   title: {
@@ -3192,18 +3509,18 @@ const SCENES = {
     draw(c) {
       applyCamera();
       renderWorld(c);
-      dim(c, 0.68);
-      // the logo: giant blocks, one goo drip off the second O
+      dim(c, 0.38);
+      // the logo: giant yellow blocks with a pink extrude, one goo drip off the second O
       const lx = W / 2, ly = 62, px = 17;
-      blockText(c, 'GOO PRIX', lx, ly, px, { align: 'center', color: '#fff', shadow: 8, skew: 0.08 });
+      blockText(c, 'GOO PRIX', lx, ly, px, { align: 'center', color: YEL, outline: 7, outlineColor: INK, shadow: 13, shadowColor: PNK, skew: 0.08 });
       const w0 = textWidth('GOO PRIX', px);
       const ox = lx - w0 / 2 + 2 * 6 * px + 2.5 * px - 7 * px * 0.08 * 0;
       const drip = 8 + 14 * (0.5 + 0.5 * Math.sin(game.sceneT * 1.6));
       c.fillStyle = GOO_C;
       c.fillRect(ox - px * 0.6, ly + 7 * px - 2, px * 1.2, drip);
       c.beginPath(); c.arc(ox, ly + 7 * px + drip, px * 0.75, 0, TAU); c.fill();
-      blockText(c, 'A FLAP-AND-SPLAT GRAND PRIX', lx, ly + 7 * px + 38, 3, { align: 'center', color: '#c8c8c8' });
-      blockText(c, 'FLAP THROUGH EVERY WINDOW · SPLAT RIVALS · WIN 5 RACES', lx, ly + 7 * px + 74, 2, { align: 'center', color: GOO_C });
+      hudText(c, 'A FLAP-AND-SPLAT GRAND PRIX', lx, ly + 7 * px + 38, 3, WHT, 'center');
+      hudText(c, 'FLAP THROUGH EVERY WINDOW · SPLAT RIVALS · WIN 5 RACES', lx, ly + 7 * px + 74, 2, CYN, 'center');
       const labels = {
         start: game.mirror || save.unlockedMirror ? 'START CUP' : 'START CUP',
         quick: 'QUICK RACE',
@@ -3215,7 +3532,7 @@ const SCENES = {
       TITLE_ITEMS.forEach((id, i) => drawButton(c, id, labels[id], bx, 310 + i * 52, bw, bh, game.menu.i === i, { arrows: id === 'diff' || id === 'scheme' }));
       // best line and trophies
       const best = save.bestCup ? 'BEST CUP ' + save.bestCup.toLocaleString('en-US') : 'NO CUP WON YET';
-      blockText(c, best, W / 2, 582, 3, { align: 'center', color: '#fff' });
+      hudText(c, best, W / 2, 582, 3, YEL, 'center');
       let tx = W / 2 - 3.2 * 48;
       let won = 0;
       for (const cupName of ['gloop', 'regloop']) for (let d = 0; d < 3; d++) {
@@ -3224,7 +3541,7 @@ const SCENES = {
         drawTrophy(c, tx, 628, 26, tr ? 4 - tr : 0);
         tx += 48;
       }
-      blockText(c, 'CUPS ' + won + '/6', tx - 10, 620, 2, { color: '#909090' });
+      hudText(c, 'CUPS ' + won + '/6', tx - 10, 620, 2, CYN);
       // the controls strip, on its own solid band
       c.fillStyle = '#000'; c.fillRect(0, 664, W, 56);
       c.fillStyle = '#262626'; c.fillRect(0, 664, W, 2);
@@ -3238,7 +3555,7 @@ const SCENES = {
     },
     draw(c) {
       applyCamera(); renderWorld(c); dim(c, 0.82);
-      blockText(c, 'HOW TO PLAY', W / 2, 40, 7, { align: 'center', color: '#fff', shadow: 4 });
+      blockText(c, 'HOW TO PLAY', W / 2, 40, 7, { align: 'center', color: YEL, outline: 4, outlineColor: INK, shadow: 9, shadowColor: PNK });
       const rows = [
         ['FLAP', 'SPACE / W  (MOUSE: LEFT CLICK)', 'FLY THROUGH THE WINDOW IN EVERY WALL. MISS AND YOU BONK.'],
         ['STEER', 'A / D  (MOUSE: CROSSHAIR)', 'THE DASHED NET LINE ON THE FLOOR IS THE RACING LINE.'],
@@ -3250,7 +3567,7 @@ const SCENES = {
       rows.forEach((r, i) => {
         const y = 130 + i * 62;
         blockText(c, r[0], 120, y, 4, { color: '#fff' });
-        blockText(c, r[1], 330, y, 2, { color: GOO_C });
+        blockText(c, r[1], 330, y, 2, { color: CYN });
         smallText(c, r[2], 330, y + 22, 18, '#c8c8c8');
       });
       const items = Object.keys(ITEMS);
@@ -3288,33 +3605,35 @@ const SCENES = {
       }
     },
     draw(c) {
-      applyCamera(); renderWorld(c); dim(c, 0.8);
-      blockText(c, 'PICK YOUR IDIOT', W / 2, 34, 6, { align: 'center', color: '#fff', shadow: 4 });
+      applyCamera(); renderWorld(c); dim(c, 0.5);
+      blockText(c, 'PICK YOUR IDIOT', W / 2, 34, 6, { align: 'center', color: YEL, outline: 4, outlineColor: INK, shadow: 8, shadowColor: PNK });
       const cw = 262, ch = 196, gx = W / 2 - (cw * 4 + 18 * 3) / 2, gy = 110;
       for (let k = 0; k < 8; k++) {
         const x = gx + (k % 4) * (cw + 18), y = gy + Math.floor(k / 4) * (ch + 18);
         const sel = k === game.racer;
         uiRect('card' + k, x, y, cw, ch);
-        c.fillStyle = sel ? '#fff' : '#000'; c.fillRect(x, y, cw, ch);
-        strokeBox(c, x, y, cw, ch, sel ? 4 : 2, sel ? '#fff' : '#3a3a3a');
-        drawRacerArt(c, RACERS[k], x + cw / 2, y + 82, sel ? 112 : 96, { color: sel ? '#000' : '#fff', flap: sel ? (Math.sin(game.sceneT * 8) > 0.6 ? 1 : 0) : 0, t: game.sceneT, mini: false });
-        blockText(c, String(k + 1), x + 14, y + 12, 3, { color: sel ? '#000' : '#585858' });
-        blockText(c, RACERS[k].name, x + cw / 2, y + ch - 34, 3, { align: 'center', color: sel ? '#000' : '#fff' });
+        if (sel) { c.fillStyle = PNK; c.fillRect(x + 7, y + 7, cw, ch); }
+        c.fillStyle = 'rgba(11,11,18,0.9)'; c.fillRect(x, y, cw, ch);
+        strokeBox(c, x, y, cw, ch, sel ? 5 : 3, sel ? YEL : RACERS[k].color);
+        drawRacerArt(c, RACERS[k], x + cw / 2, y + 82, sel ? 118 : 96, { color: INK, fill: RACERS[k].color, flap: sel ? (Math.sin(game.sceneT * 8) > 0.6 ? 1 : 0) : 0, t: game.sceneT, mini: false });
+        blockText(c, String(k + 1), x + 14, y + 12, 3, { color: RACERS[k].color });
+        blockText(c, RACERS[k].name, x + cw / 2, y + ch - 34, 3, { align: 'center', color: sel ? YEL : WHT });
       }
       // stats and bio of the highlighted racer
       const d = RACERS[game.racer];
       const sy0 = gy + 2 * (ch + 18) + 6;
+      plate(c, gx - 12, sy0 - 12, cw * 4 + 18 * 3 + 24, 92, d.color);
       ['SPEED', 'FLAP', 'GOO', 'WEIGHT'].forEach((nm, j) => {
         const x = gx + j * 230;
-        blockText(c, nm, x, sy0, 2, { color: '#909090' });
-        for (let b = 0; b < 5; b++) { c.fillStyle = b < d.stats[j] ? '#fff' : '#262626'; c.fillRect(x + b * 34, sy0 + 20, 28, 14); }
+        blockText(c, nm, x, sy0, 2, { color: CYN });
+        for (let b = 0; b < 5; b++) { c.fillStyle = b < d.stats[j] ? d.color : '#22222C'; c.fillRect(x + b * 34, sy0 + 20, 28, 14); }
       });
-      smallText(c, d.bio, W / 2, sy0 + 50, 18, '#c8c8c8', 'center');
+      smallText(c, d.bio, W / 2, sy0 + 50, 18, WHT, 'center');
       const quick = game.cupMode === 'quick';
       const optLabel = quick ? 'TRACK: ' + TRACKS[game.quickTrack].name : (game.mirror ? 'REGLOOP CUP (MIRROR)' : 'THE GLOOP CUP · 5 RACES') + (save.unlockedMirror ? '' : '');
       drawButton(c, 'opt', optLabel, W / 2 - 300, 632, 360, 44, game.selRow === 1, { arrows: quick || save.unlockedMirror, px: 2 });
       drawButton(c, 'go', 'RACE!', W / 2 + 80, 632, 220, 44, game.selRow === 2, { px: 3 });
-      smallText(c, DIFFS[game.diff] + ' · ESC BACK', W / 2, 684, 14, '#585858', 'center');
+      hudText(c, DIFFS[game.diff] + ' · ESC BACK', W / 2, 688, 2, CYN, 'center');
     },
   },
 
@@ -3331,17 +3650,21 @@ const SCENES = {
       world.camU = lerp(0, p.u, e); world.camV = lerp(12.5, p.v + CFG.camUp, e);
       applyCamera(p.dist - lerp(46, CFG.camBack, e));
       renderWorld(c);
+      const grey = firstRaceGrey();
+      if (grey > 0) { c.globalCompositeOperation = 'saturation'; c.globalAlpha = grey; c.fillStyle = '#808080'; c.fillRect(0, 0, W, H); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; }
       if (e > 0.85) drawPlayerCraft(c);
       const k = smooth01(world.introT / 0.35);
       const def = TRACK.def;
       const cup = game.cup;
       c.save(); c.translate((1 - k) * -600, 0);
-      c.fillStyle = '#fff'; c.fillRect(0, 214, W * 0.78, 96);
-      blockText(c, (TRACK.mirror < 0 ? 'MIRROR ' : '') + def.name, 70, 228, 10, { color: '#000', skew: 0.12 });
+      c.fillStyle = PNK; c.fillRect(0, 222, W * 0.78, 96);
+      c.fillStyle = YEL; c.fillRect(0, 214, W * 0.78, 96);
+      blockText(c, (TRACK.mirror < 0 ? 'MIRROR ' : '') + def.name, 70, 228, 10, { color: INK, skew: 0.12 });
       c.restore();
-      blockText(c, cup.mode === 'cup' ? 'RACE ' + (cup.race + 1) + '/5' : 'QUICK RACE', 70, 330, 4, { color: '#fff', shadow: 3 });
-      smallText(c, def.tip, 72, 376, 20, '#c8c8c8');
-      blockText(c, 'ENTER TO SKIP', W - 40, H - 40, 2, { align: 'right', color: '#585858' });
+      hudText(c, cup.mode === 'cup' ? 'RACE ' + (cup.race + 1) + '/5' : 'QUICK RACE', 70, 336, 4, WHT);
+      plate(c, 56, 372, Math.min(W - 112, 40 + def.tip.length * 11), 40, CYN);
+      smallText(c, def.tip, 72, 382, 20, WHT);
+      hudText(c, 'ENTER TO SKIP', W - 40, H - 40, 2, CYN, 'right');
     },
   },
 
@@ -3359,6 +3682,9 @@ const SCENES = {
     draw(c) {
       applyCamera();
       renderWorld(c);
+      // race 1 starts in plain old greyscale and the colour floods in over the countdown
+      const grey = firstRaceGrey();
+      if (grey > 0) { c.globalCompositeOperation = 'saturation'; c.globalAlpha = grey; c.fillStyle = '#808080'; c.fillRect(0, 0, W, H); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; }
       drawPlayerCraft(c);
       drawSpeedDashes(c);
       drawWindscreen(c);
@@ -3369,7 +3695,7 @@ const SCENES = {
         if (n <= 3 && n >= 1) {
           const f = world.countdown - Math.floor(world.countdown);
           c.save(); c.translate(W / 2, 300); const sc = 0.8 + f * 0.5; c.scale(sc, sc);
-          blockText(c, String(n), 0, -84, 24, { align: 'center', color: '#fff', shadow: 8 });
+          blockText(c, String(n), 0, -84, 24, { align: 'center', color: YEL, outline: 8, outlineColor: INK, shadow: 14, shadowColor: PNK });
           c.restore();
         }
       }
@@ -3391,7 +3717,7 @@ const SCENES = {
       opts[sel].go();
     },
     draw(c) {
-      applyCamera(); renderWorld(c); dim(c, 0.93);
+      applyCamera(); renderWorld(c); dim(c, 0.55);
       drawResults(c, game.lastResults, game.sceneT);
     },
   },
@@ -3430,6 +3756,14 @@ const SCENES = {
   },
 };
 
+// How grey the world still is: fully grey before race 1's countdown, colour by GO!
+function firstRaceGrey() {
+  if (!world || world.attract || !game.cup || game.cup.race !== 0 || game.cup.mode !== 'cup') return 0;
+  if (game.scene === 'intro') return 1;
+  if (world.state !== 'countdown') return 0;
+  return clamp((world.countdown - 0.2) / 2.6, 0, 1);
+}
+
 function resultOptions(res, cup) {
   const opts = [];
   if (cup.mode === 'quick') {
@@ -3450,49 +3784,54 @@ function resultOptions(res, cup) {
 
 function drawResults(c, res, t) {
   const cup = game.cup;
-  blockText(c, res.dnq ? 'DID NOT QUALIFY' : 'RESULTS', 60, 34, 6, { color: res.dnq ? GOO_C : '#fff', shadow: 4 });
-  blockText(c, TRACKS[res.trackIdx].name + (cup.mode === 'cup' ? '  ·  RACE ' + (cup.race + 1) + '/5' : ''), 60, 84, 2, { color: '#909090' });
+  hudText(c, res.dnq ? 'DID NOT QUALIFY' : 'RESULTS', 60, 34, 6, res.dnq ? PNK : YEL);
+  hudText(c, TRACKS[res.trackIdx].name + (cup.mode === 'cup' ? '  ·  RACE ' + (cup.race + 1) + '/5' : ''), 60, 86, 2, CYN);
   // the table
+  plate(c, 44, 108, 672, 8 * 58 + 14);
   res.order.forEach((row, i) => {
     const k = clamp((t - i * 0.06) / 0.25, 0, 1);
     const y = 120 + i * 58, x = 60 - (1 - smooth01(k)) * 500;
     const me = row.isPlayer;
-    c.fillStyle = me ? '#fff' : 'rgba(255,255,255,0.04)'; c.fillRect(x, y, 640, 50);
-    const ink = me ? '#000' : '#fff';
+    c.fillStyle = me ? YEL : 'rgba(255,255,255,0.05)'; c.fillRect(x, y, 640, 50);
+    if (!me) { c.fillStyle = RACERS[row.idx].color; c.fillRect(x, y, 5, 50); }
+    const ink = me ? INK : WHT;
     blockText(c, String(i + 1), x + 34, y + 11, 4, { align: 'center', color: ink });
-    drawRacerArt(c, RACERS[row.idx], x + 98, y + 26, 40, { color: ink, mini: true, t: 0 });
+    drawRacerArt(c, RACERS[row.idx], x + 98, y + 26, 40, { color: INK, fill: RACERS[row.idx].color, mini: true, t: 0 });
     blockText(c, RACERS[row.idx].name, x + 140, y + 18, 2, { color: ink });
-    blockText(c, fmtTime(row.time), x + 470, y + 18, 2, { align: 'right', color: me ? '#000' : '#c8c8c8' });
-    if (cup.mode === 'cup' && !res.dnq) blockText(c, '+' + row.pts, x + 620, y + 15, 3, { align: 'right', color: ink });
+    blockText(c, fmtTime(row.time), x + 470, y + 18, 2, { align: 'right', color: me ? INK : '#C8C8D0' });
+    if (cup.mode === 'cup' && !res.dnq) blockText(c, '+' + row.pts, x + 620, y + 15, 3, { align: 'right', color: me ? INK : CYN });
   });
   // splat score breakdown, counting up
   const px0 = 740;
-  blockText(c, 'SPLAT SCORE', px0, 120, 3, { color: '#fff' });
+  plate(c, px0 - 16, 106, W - 60 - px0 + 32, 360);
+  hudText(c, 'SPLAT SCORE', px0, 120, 3, YEL);
   res.lines.forEach((ln, i) => {
     const y = 156 + i * 30;
     const a = clamp((t - 0.4 - i * 0.12) / 0.2, 0, 1);
     c.globalAlpha = a;
-    blockText(c, ln[0], px0, y, 2, { color: '#c8c8c8' });
-    blockText(c, '+' + ln[1], W - 60, y, 2, { align: 'right', color: ln[1] ? '#fff' : '#585858' });
+    blockText(c, ln[0], px0, y, 2, { color: WHT });
+    blockText(c, '+' + ln[1], W - 60, y, 2, { align: 'right', color: ln[1] ? CYN : '#5a5a66' });
     c.globalAlpha = 1;
   });
   const shown = Math.round(res.raceScore * clamp((t - 0.5) / 1.2, 0, 1));
-  c.fillStyle = '#585858'; c.fillRect(px0, 156 + res.lines.length * 30 - 4, W - 60 - px0, 2);
-  blockText(c, 'RACE TOTAL', px0, 156 + res.lines.length * 30 + 14, 2, { color: '#909090' });
-  blockText(c, String(shown), W - 60, 156 + res.lines.length * 30 + 6, 7, { align: 'right', color: '#fff', shadow: 4 });
+  c.fillStyle = PNK; c.fillRect(px0, 156 + res.lines.length * 30 - 4, W - 60 - px0, 2);
+  blockText(c, 'RACE TOTAL', px0, 156 + res.lines.length * 30 + 14, 2, { color: CYN });
+  hudText(c, String(shown), W - 60, 156 + res.lines.length * 30 + 6, 7, YEL, 'right');
   if (res.newBestRace && !res.dnq && t > 1.6) {
-    c.save(); c.translate(px0 + 112, 508); c.rotate(-0.12);
+    c.save(); c.translate(px0 + 112, 512); c.rotate(-0.12);
     const s = 1 + Math.max(0, 0.4 - (t - 1.6)) * 2;
     c.scale(s, s);
-    c.fillStyle = GOO_C; c.fillRect(-110, -26, 220, 52);
-    blockText(c, 'NEW BEST!', 0, -14, 4, { align: 'center', color: '#000' });
+    c.fillStyle = INK; c.fillRect(-106, -22, 220, 52);
+    c.fillStyle = PNK; c.fillRect(-112, -28, 220, 52);
+    blockText(c, 'NEW BEST!', -2, -16, 4, { align: 'center', color: WHT });
     c.restore();
   }
   // mini standings
   if (cup.mode === 'cup' && !res.dnq) {
     const st = cupStandings().slice(0, 4);
-    blockText(c, 'CUP POINTS', px0 + 262, 462, 2, { color: '#909090' });
-    st.forEach((idx, i) => blockText(c, (i + 1) + ' ' + RACERS[idx].name.split(' ').pop() + ' ' + cup.pts[idx], px0 + 262, 486 + i * 22, 2, { color: idx === game.racer ? GOO_C : '#c8c8c8' }));
+    plate(c, px0 + 250, 476, W - 60 - px0 - 234, 102, CYN);
+    blockText(c, 'CUP POINTS', px0 + 262, 484, 2, { color: CYN });
+    st.forEach((idx, i) => blockText(c, (i + 1) + ' ' + RACERS[idx].name.split(' ').pop() + ' ' + cup.pts[idx], px0 + 262, 503 + i * 18, 2, { color: idx === game.racer ? YEL : WHT }));
   }
   const opts = resultOptions(res, cup);
   opts.forEach((o, i) => {
@@ -3504,19 +3843,21 @@ function drawResults(c, res, t) {
 
 function drawStandings(c, t) {
   const cup = game.cup;
-  blockText(c, 'CUP STANDINGS', W / 2, 40, 6, { align: 'center', color: '#fff', shadow: 4 });
-  blockText(c, 'AFTER RACE ' + (cup.race + 1) + ' OF 5', W / 2, 96, 2, { align: 'center', color: '#909090' });
+  hudText(c, 'CUP STANDINGS', W / 2, 40, 6, YEL, 'center');
+  hudText(c, 'AFTER RACE ' + (cup.race + 1) + ' OF 5', W / 2, 96, 2, CYN, 'center');
   const st = cupStandings();
   const maxPts = Math.max(15, ...cup.pts);
+  plate(c, 160, 126, 960, 8 * 56 + 20);
   st.forEach((idx, i) => {
     const y = 140 + i * 56;
     const me = idx === game.racer;
-    blockText(c, String(i + 1), 210, y + 10, 4, { align: 'right', color: '#fff' });
-    drawRacerArt(c, RACERS[idx], 262, y + 22, 40, { color: '#fff', mini: true, t: 0 });
-    blockText(c, RACERS[idx].name, 300, y + 14, 2, { color: me ? GOO_C : '#fff' });
-    const bw = (cup.pts[idx] / maxPts) * 520 * smooth01(clamp((t - i * 0.05) / 0.6, 0, 1));
-    c.fillStyle = me ? GOO_C : '#fff'; c.fillRect(540, y + 8, bw, 26);
-    blockText(c, String(cup.pts[idx]), 540 + bw + 14, y + 12, 3, { color: '#fff' });
+    blockText(c, String(i + 1), 210, y + 10, 4, { align: 'right', color: me ? YEL : WHT });
+    drawRacerArt(c, RACERS[idx], 262, y + 22, 40, { color: INK, fill: RACERS[idx].color, mini: true, t: 0 });
+    blockText(c, RACERS[idx].name, 300, y + 14, 2, { color: me ? YEL : WHT });
+    const bw = (cup.pts[idx] / maxPts) * 480 * smooth01(clamp((t - i * 0.05) / 0.6, 0, 1));
+    c.fillStyle = INK; c.fillRect(538, y + 6, bw + 4, 30);
+    c.fillStyle = me ? YEL : RACERS[idx].color; c.fillRect(540, y + 8, bw, 26);
+    blockText(c, String(cup.pts[idx]), 540 + bw + 14, y + 12, 3, { color: WHT });
   });
   const next = TRACKS[cup.tracks[cup.race + 1]];
   drawButton(c, 'next', 'NEXT: ' + next.name, W / 2 - 240, 610, 480, 50, true, { px: 3 });
@@ -3548,23 +3889,58 @@ function drawStarfield(c, t) {
   c.globalAlpha = 1;
 }
 
+// Melt City at night, for the podium: gradient, an orange crescent and two aurora ribbons.
+function drawNightSky(c, t) {
+  const g = c.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#0A0320'); g.addColorStop(0.62, '#3B0B6B'); g.addColorStop(1, '#5B1A8C');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const rng = mulberry32(55);
+  c.fillStyle = WHT;
+  for (let i = 0; i < 120; i++) { const x = rng() * W, y = rng() * H * 0.6; c.globalAlpha = 0.3 + rng() * 0.7; c.fillRect(x, y, 2, 2); }
+  c.globalAlpha = 1;
+  c.fillStyle = ORG; c.beginPath(); c.arc(1130, 110, 56, 0, TAU); c.fill();
+  c.fillStyle = '#0A0320'; c.beginPath(); c.arc(1154, 96, 50, 0, TAU); c.fill();
+  for (const [cc, ph, yy] of [[PNK, 0, 150], [CYN, 2.1, 210]]) {
+    c.beginPath();
+    for (let x = 0; x <= W; x += 20) {
+      const y = yy + Math.sin(x * 0.006 + t * 0.8 + ph) * 40 + Math.sin(x * 0.013 - t * 0.5) * 18;
+      if (x === 0) c.moveTo(x, y); else c.lineTo(x, y);
+    }
+    c.globalAlpha = 0.75; neon(c, cc, 7); c.globalAlpha = 1;
+  }
+  // a skyline of ink towers with lit windows along the bottom
+  const r2 = mulberry32(77);
+  let x = -20;
+  while (x < W) {
+    const w = 50 + r2() * 90, h = 80 + r2() * 160;
+    c.fillStyle = INK; c.fillRect(x, H - h, w, h);
+    for (let yy = H - h + 10; yy < H - 8; yy += 14) for (let xx = x + 8; xx < x + w - 8; xx += 14) {
+      if (r2() < 0.55) continue;
+      c.fillStyle = [CYN, PNK, YEL][Math.floor(r2() * 3)]; c.fillRect(xx, yy, 5, 6);
+    }
+    x += w + 8;
+  }
+}
+
 function drawPodium(c, t) {
-  drawStarfield(c, t);
+  drawNightSky(c, t);
   const cup = game.cup;
   const st = cupStandings();
   const place = st.indexOf(game.racer);
-  blockText(c, place === 0 ? 'CHAMPION!' : place < 3 ? 'ON THE PODIUM!' : 'PARTICIPATION STICKER', W / 2, 30, 7, { align: 'center', color: '#fff', shadow: 5 });
-  // podium blocks: 2 | 1 | 3
+  blockText(c, place === 0 ? 'CHAMPION!' : place < 3 ? 'ON THE PODIUM!' : 'PARTICIPATION STICKER', W / 2, 30, 7, { align: 'center', color: YEL, outline: 5, outlineColor: INK, shadow: 10, shadowColor: PNK });
+  // podium blocks: 2 | 1 | 3, in the three neons
   const cx = 470;
-  const blocks = [[1, cx - 190, 150], [0, cx, 220], [2, cx + 190, 110]];
-  for (const [rank, x, h] of blocks) {
+  const blocks = [[1, cx - 190, 150, CYN], [0, cx, 220, YEL], [2, cx + 190, 110, PNK]];
+  for (const [rank, x, h, colr] of blocks) {
     const y = 620 - h;
-    c.fillStyle = '#fff'; c.fillRect(x - 85, y, 170, h);
-    blockText(c, String(rank + 1), x, y + 22, 8, { align: 'center', color: '#000' });
+    c.fillStyle = INK; c.fillRect(x - 81, y + 6, 170, h);
+    c.fillStyle = colr; c.fillRect(x - 85, y, 170, h);
+    strokeBox(c, x - 85, y, 170, h, 4, INK);
+    blockText(c, String(rank + 1), x, y + 22, 8, { align: 'center', color: INK });
     const idx = st[rank];
     const bob = Math.sin(t * 3 + rank) * 6;
-    drawRacerArt(c, RACERS[idx], x, y - 70 + bob, rank === 0 ? 130 : 108, { color: '#fff', flap: Math.sin(t * 6 + rank) > 0.7 ? 1 : 0, t, splats: rank === 1 && idx !== game.racer ? [{ x: 0.1, y: -0.2, seed: 5, t: 4 }] : null });
-    blockText(c, RACERS[idx].name, x, 640, 2, { align: 'center', color: idx === game.racer ? GOO_C : '#c8c8c8' });
+    drawRacerArt(c, RACERS[idx], x, y - 70 + bob, rank === 0 ? 130 : 108, { color: INK, fill: RACERS[idx].color, flap: Math.sin(t * 6 + rank) > 0.7 ? 1 : 0, t, splats: rank === 1 && idx !== game.racer ? [{ x: 0.1, y: -0.2, seed: 5, t: 4 }] : null });
+    hudText(c, RACERS[idx].name, x, 640, 2, idx === game.racer ? YEL : WHT, 'center');
   }
   if (place === 0) drawTrophy(c, cx, 200 + Math.sin(t * 2) * 6, 110, 3);
   // goo confetti
@@ -3577,31 +3953,35 @@ function drawPodium(c, t) {
   }
   // standings column
   const sx0 = 840;
-  blockText(c, 'FINAL STANDINGS', sx0, 140, 3, { color: '#fff' });
+  plate(c, sx0 - 22, 124, 428, 410);
+  hudText(c, 'FINAL STANDINGS', sx0, 140, 3, YEL);
   st.forEach((idx, i) => {
     const y = 180 + i * 29;
     const me = idx === game.racer;
-    if (me) { c.fillStyle = '#fff'; c.fillRect(sx0 - 8, y - 6, 400, 26); }
-    blockText(c, (i + 1) + '  ' + RACERS[idx].name, sx0, y, 2, { color: me ? '#000' : '#c8c8c8' });
-    blockText(c, String(cup.pts[idx]), sx0 + 380, y, 2, { align: 'right', color: me ? '#000' : '#fff' });
+    if (me) { c.fillStyle = YEL; c.fillRect(sx0 - 8, y - 6, 400, 26); }
+    else { c.fillStyle = RACERS[idx].color; c.fillRect(sx0 - 8, y - 4, 4, 20); }
+    blockText(c, (i + 1) + '  ' + RACERS[idx].name, sx0, y, 2, { color: me ? INK : WHT });
+    blockText(c, String(cup.pts[idx]), sx0 + 380, y, 2, { align: 'right', color: me ? INK : CYN });
   });
-  blockText(c, 'CUP SCORE', sx0, 420, 2, { color: '#909090' });
-  blockText(c, cup.score.toLocaleString('en-US'), sx0, 440, 6, { color: '#fff', shadow: 4 });
-  blockText(c, 'SPLATS x' + cup.splats + '   RETRIES LEFT ' + cup.tokens, sx0, 494, 2, { color: '#c8c8c8' });
-  blockText(c, 'BEST LAP ' + (cup.bestLap ? fmtTime(cup.bestLap) : '-'), sx0, 516, 2, { color: '#c8c8c8' });
+  blockText(c, 'CUP SCORE', sx0, 420, 2, { color: CYN });
+  hudText(c, cup.score.toLocaleString('en-US'), sx0, 440, 6, YEL);
+  blockText(c, 'SPLATS x' + cup.splats + '   RETRIES LEFT ' + cup.tokens, sx0, 494, 2, { color: WHT });
+  blockText(c, 'BEST LAP ' + (cup.bestLap ? fmtTime(cup.bestLap) : '-'), sx0, 516, 2, { color: WHT });
   if (cup.unlocked || (SHOT && place < 3)) {
-    c.fillStyle = GOO_C; c.fillRect(sx0 - 8, 542, 400, 32);
-    blockText(c, 'REGLOOP CUP UNLOCKED!', sx0 + 192, 551, 2, { align: 'center', color: '#000' });
+    c.fillStyle = INK; c.fillRect(sx0 - 4, 546, 400, 32);
+    c.fillStyle = CYN; c.fillRect(sx0 - 8, 542, 400, 32);
+    blockText(c, 'REGLOOP CUP UNLOCKED!', sx0 + 192, 551, 2, { align: 'center', color: INK });
   }
   drawButton(c, 'again', 'PLAY AGAIN', sx0 - 8, 590, 190, 44, game.podMenu.i === 0, { px: 2 });
   drawButton(c, 'title', 'TITLE', sx0 + 202, 590, 190, 44, game.podMenu.i === 1, { px: 2 });
-  blockText(c, 'ENTER: PLAY AGAIN', sx0 + 192, 650, 2, { align: 'center', color: '#585858' });
+  hudText(c, 'ENTER: PLAY AGAIN', sx0 + 192, 650, 2, CYN, 'center');
 }
 
 function drawGameOver(c, t) {
   drawStarfield(c, t * 0.3);
   blockText(c, 'GAME OVER', W / 2, 90, 12, { align: 'center', color: '#fff', shadow: 6 });
   smallText(c, 'YOUR CUP RUNNETH OVER. WITH FAILURE.', W / 2, 200, 24, '#c8c8c8', 'center');
+  blockText(c, 'COLOUR REVOKED.', W / 2, 244, 3, { align: 'center', color: '#585858' });
   // the craft, sulking in a dumpster
   const x = W / 2, y = 420;
   drawRacerArt(c, RACERS[game.racer], x, y - 40 + Math.sin(t * 2) * 4, 120, { color: '#fff', goo: true, t });
@@ -3613,6 +3993,55 @@ function drawGameOver(c, t) {
   drawButton(c, 'retry', 'RETRY CUP', W / 2 - 250, 600, 240, 50, game.goMenu.i === 0);
   drawButton(c, 'title', 'TITLE', W / 2 + 10, 600, 240, 50, game.goMenu.i === 1);
 }
+
+// ---- BOOT: it starts as plain old Pong in an old 4:3 picture... until the ball goes splat
+const BOOT = {};
+SCENES.boot = {
+  enter() { Object.assign(BOOT, { t: 0, bx: 640, by: 330, vx: -620, vy: 260, hits: 0, splat: 0, ly: 360, ry: 360, left: false }); },
+  update(dt) {
+    BOOT.t += dt;
+    if (input.hit.size || input.click) { goTo('title'); return; }
+    if (BOOT.splat > 0) {
+      BOOT.splat += dt;
+      if (BOOT.splat > 1.9 && !BOOT.left) { BOOT.left = true; goTo('title'); }
+      return;
+    }
+    BOOT.bx += BOOT.vx * dt; BOOT.by += BOOT.vy * dt;
+    if (BOOT.by < 82 || BOOT.by > 622) { BOOT.vy *= -1; BOOT.by = clamp(BOOT.by, 82, 622); sfx.tick(); }
+    BOOT.ly = damp(BOOT.ly, BOOT.by, 7, dt); BOOT.ry = damp(BOOT.ry, BOOT.by, 7, dt);
+    if ((BOOT.vx < 0 && BOOT.bx < 290) || (BOOT.vx > 0 && BOOT.bx > 990)) {
+      BOOT.hits++;
+      if (BOOT.hits >= 3) { BOOT.splat = 0.001; sfx.splat(); return; }
+      BOOT.vx *= -1.15; sfx.beep(false);
+    }
+  },
+  draw(c) {
+    c.fillStyle = '#2a2a2f'; c.fillRect(0, 0, W, H);
+    c.fillStyle = '#000'; c.fillRect(240, 60, 800, 600);
+    c.fillStyle = '#fff';
+    for (let y = 70; y < 650; y += 30) c.fillRect(W / 2 - 4, y, 8, 16);
+    blockText(c, '0', W / 2 - 110, 90, 12, { align: 'center', color: '#fff' });
+    blockText(c, '0', W / 2 + 110, 90, 12, { align: 'center', color: '#fff' });
+    c.fillRect(270, BOOT.ly - 45, 14, 90);
+    c.fillRect(996, BOOT.ry - 45, 14, 90);
+    const k = BOOT.splat;
+    if (k <= 0) { c.fillRect(BOOT.bx - 8, BOOT.by - 8, 16, 16); }
+    else {
+      // the ball hits a paddle and goes splat, and the colour floods in from the horizon
+      gooSplat(c, BOOT.bx, BOOT.by, 20 + Math.min(1, k * 3) * 120 + k * 60, 77, 1);
+      if (k > 0.55) {
+        const f = smooth01((k - 0.55) / 0.9);
+        ['#1A0B3B', '#5B1A8C', '#FF1F8C', '#FF7A0D'].forEach((cc, i) => {
+          const half = (H / 2) * f * (1 - i * 0.22);
+          c.fillStyle = cc; c.fillRect(0, H / 2 - half, W, half * 2);
+        });
+      }
+      if (k > 0.12 && k < 1.0) blockText(c, 'SPLAT!', W / 2, 300, 14, { align: 'center', color: GOO_C, outline: 8, outlineColor: INK, skew: 0.15 });
+      if (k > 1.15) blockText(c, 'GOO PRIX', W / 2, 290, 17, { align: 'center', color: YEL, outline: 7, outlineColor: INK, shadow: 13, shadowColor: PNK, skew: 0.08 });
+    }
+    if (Math.floor(BOOT.t * 2) % 2 === 0 && k <= 0) blockText(c, 'PRESS ANY KEY', W / 2, 690, 2, { align: 'center', color: '#8a8a92' });
+  },
+};
 
 // ---- PAUSE overlay inside the race
 const PAUSE_ITEMS = ['resume', 'restart', 'scheme', 'quit'];
@@ -3685,11 +4114,9 @@ function showcaseGate() {
 
 function poseRace() {
   startCup('cup');
-  game.cup.race = 3;
-  game.cup.pts = [37, 9, 28, 30, 12, 20, 15, 39];
-  game.cup.score = 31200;
-  game.cup.tokens = 2;
-  setupRace(3);
+  game.cup.race = 0;
+  game.cup.tokens = 3;
+  setupRace(0);
   enterScene('race');
   world.state = 'run'; world.goT = 0;
   world.autopilot = true;
@@ -3742,15 +4169,15 @@ function poseRace() {
   updateAim(p, 1);
 }
 
-// Second gameplay pose: Bar Code on the final lap, a goo-jammed spinner ahead and items in the air.
+// Second gameplay pose: The Trip on the final lap, leading, a laser gate or spinner ahead, items flying.
 function poseHazard() {
   startCup('cup');
-  game.cup.race = 2;
-  game.cup.pts = [25, 6, 18, 22, 8, 14, 10, 27];
-  game.cup.score = 21400;
-  game.cup.tokens = 3;
+  game.cup.race = 4;
+  game.cup.pts = [52, 10, 36, 44, 16, 26, 20, 49];
+  game.cup.score = 41800;
+  game.cup.tokens = 2;
   game.racer = 0;
-  setupRace(2);
+  setupRace(4);
   enterScene('race');
   world.state = 'run'; world.goT = 0;
   world.autopilot = true;
@@ -3760,43 +4187,44 @@ function poseHazard() {
   const blocking = (k) => k === 'gate' || k === 'pillars' || k === 'rotor' || k === 'laser' || k === 'blocks' || k === 'ball';
   let best = null;
   for (const th of T.things) {
-    if (th.kind !== 'rotor') continue;
-    let score = 0, clear = true;
+    if (th.kind !== 'rotor' && th.kind !== 'laser') continue;
+    let score = th.kind === 'rotor' ? 4 : 0, clear = true;
     for (const o of T.things) {
       const d = wrap(o.s - (th.s - 34), L);
       if (d < 33 && blocking(o.kind)) clear = false;
-      if (d > 4 && d < 70) { if (o.kind === 'ring') score += 2; if (o.kind === 'cube') score += 2; if (o.kind === 'coin') score += 1; }
     }
+    for (const z of T.zones) if (z.kind === 'lowg' && wrap(th.s - z.s0, L) < z.s1 - z.s0 + 40) score += 3;
     if (clear) score += 10;
     if (!best || score > best.score) best = { th, score };
   }
-  const rot = best ? best.th : T.things.find((th) => blocking(th.kind));
+  const hz = best ? best.th : T.things.find((th) => blocking(th.kind));
   for (const th of T.things) { th.back = 0; if (th.blocks) for (const b of th.blocks) b.hp = 1; }
   world.t = world.goT + 71.2;
-  if (rot.kind === 'rotor') {
-    rot.jam = 2.4;
-    rot.spun = Math.PI / 5;
-    rot.decals = [];
-    addDecal(rot, rot.u + 0.4, rot.v - 0.3, 1.4);
-    addDecal(rot, rot.u + 3.6, rot.v + 1.2, 0.9);
-  }
-  // bring a cube row, a ring and a coin arc into the stretch before the spinner
-  T.things.filter((th) => th.kind === 'cube').slice(0, 3).forEach((cb, i) => Object.assign(cb, { s: rot.s - 9, u: clamp(rot.u + (i - 1) * 5.5, -10.5, 10.5), v: 11.8, gold: i === 2 }));
-  T.things.filter((th) => th.kind === 'ring').slice(0, 1).forEach((rg) => Object.assign(rg, { s: rot.s - 6, u: clamp(rot.u + 6.5, -9.5, 9.5), v: clamp(rot.v - 3, 2.5, 11) }));
-  T.things.filter((th) => th.kind === 'coin').slice(0, 5).forEach((cn, i) => Object.assign(cn, { s: rot.s - 19 + i * 3, u: clamp(rot.u + 2.5 - i * 1.2, -10.5, 10.5), v: clamp(rot.v + 1.2 - i * 0.6, 1.5, 12) }));
-  p.dist = 2 * L + rot.s - 34; p.u = clamp(rot.u + 5.4, -10, 10); p.v = clamp(rot.v + 2.6, 2, 12); p.vu = -2; p.vv = 3;
+  const cu = hz.kind === 'rotor' ? hz.u : 0, cv = hz.kind === 'rotor' ? hz.v : (hz.split || 7);
+  if (hz.kind === 'rotor') {
+    hz.jam = 2.4; hz.spun = Math.PI / 5; hz.decals = [];
+    addDecal(hz, hz.u + 0.4, hz.v - 0.3, 1.4);
+    addDecal(hz, hz.u + 3.6, hz.v + 1.2, 0.9);
+  } else { hz.phase = wrap(-world.t + 0.4, hz.period * 2); }
+  // bring a cube row, a ring and a coin arc into the stretch before it
+  T.things.filter((th) => th.kind === 'cube').slice(0, 3).forEach((cb, i) => Object.assign(cb, { s: hz.s - 9, u: clamp(cu + (i - 1) * 5.5, -10.5, 10.5), v: 11.8, gold: i === 2 }));
+  T.things.filter((th) => th.kind === 'ring').slice(0, 1).forEach((rg) => Object.assign(rg, { s: hz.s - 6, u: clamp(cu + 6.5, -9.5, 9.5), v: clamp(cv - 3, 2.5, 11) }));
+  T.things.filter((th) => th.kind === 'coin').slice(0, 5).forEach((cn, i) => Object.assign(cn, { s: hz.s - 19 + i * 3, u: clamp(cu + 2.5 - i * 1.2, -10.5, 10.5), v: clamp(cv + 1.2 - i * 0.6, 1.5, 12) }));
+  T.zones.push({ kind: 'lowg', s0: hz.s - 30, s1: hz.s + 20 });
+  p.dist = 2 * L + hz.s - 34; p.u = clamp(cu + 5.4, -10, 10); p.v = clamp(cv + 2.6, 2, 12); p.vu = -2; p.vv = 3;
   p.lap = 2; p.lapTimes = [33.9, 32.4]; p.lapStart = world.t - 4.9;
   p.speed = 66; p.boostT = 0; p.coins = 9; p.tank = 84; p.item = null; p.shield = 6.5; p.flapAnim = 1; p.stun = 0; p.invuln = 0; p.goop = 0; p.splats = [];
   world.score = 18620;
   const at = (idx) => world.racers.find((r) => r.idx === idx);
   const place = (idx, d, u, v, extra) => Object.assign(at(idx), { dist: p.dist + d, u: clamp(u, -10.5, 10.5), v: clamp(v, 1.2, 12.8), vu: 0, vv: 0, stun: 0, invuln: 0, goop: 0, shield: 0, splats: [], finished: false, flapAnim: 0 }, extra || {});
-  place(7, 120, 0, 6);                                                                          // Count Crumb, leading
-  place(2, 90, 1, 6);                                                                           // Sprocket
-  place(3, 70, 2, 7);                                                                           // Nana Fang
-  const pickle = place(5, 24, rot.u - 5.5, rot.v + 3.8, { flapAnim: 1 });                          // the Sock's victim, about to clear the spinner
-  place(6, 16, p.u - 7.5, p.v - 3.2, { goop: 1.1, splats: [{ x: 0.15, y: -0.2, seed: 61, t: 3 }] });
-  place(4, -20, p.u - 2, p.v);                                                                  // Moldy Greg behind
-  place(1, -48, 4, 5);
+  // you lead: everyone in view ahead is a lap down
+  const pickle = place(5, 24 - L, cu - 5.5, cv + 3.8, { flapAnim: 1 });
+  place(6, 16 - L, p.u - 7.5, p.v - 3.2, { goop: 1.1, splats: [{ x: 0.15, y: -0.2, seed: 61, t: 3 }] });
+  place(3, 44 - L, cu + 2, cv - 2.5, { shield: 5 });
+  place(7, -14, p.u - 2, p.v);                                                                  // Count Crumb right behind you
+  place(2, -40, 3, 6);
+  place(4, -70, -4, 5);
+  place(1, -95, 4, 5);
   world.globs = [{ dist: p.dist + 21, u: p.u - 3.4, v: p.v - 1.2, vs: 260, vu: -6, vv: 1, owner: p, life: 0.9, big: true, r: 1.5, seed: 4, hit: [] }];
   world.ents = [
     { kind: 'sock', dist: pickle.dist - 7, u: pickle.u + 1.6, v: pickle.v - 1.1, target: pickle, owner: at(4), hp: 2, life: 6, vu: 0, vv: 0 },
@@ -3813,6 +4241,7 @@ function poseHazard() {
   applyCamera();
   updateAim(p, 1);
 }
+
 
 function poseResults() {
   startCup('cup');
@@ -3950,7 +4379,7 @@ function boot() {
   window.addEventListener('resize', layout);
   if (SHOT) { runShot(SHOT); return; }
   wireShell();
-  enterScene('title');
+  enterScene('boot');
   canvas.focus();
   requestAnimationFrame(loop);
 }
