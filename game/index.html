@@ -1012,12 +1012,6 @@ function drawSky(c, T) {
     }
     c.fill(); c.stroke();
   }
-  if (motif === 'court') {
-    // a giant distant scoreboard glow: two dim blocky zeros, an in-joke for the original
-    const bx = W / 2 + shift * 0.25;
-    blockText(c, '0', bx - 120, cam.hz + cam.oy - 170, 20, { color: '#161616', align: 'center' });
-    blockText(c, '0', bx + 120, cam.hz + cam.oy - 170, 20, { color: '#161616', align: 'center' });
-  }
   // horizon line, rolled with the camera
   c.save();
   c.translate(W / 2 + cam.ox, cam.hz + cam.oy);
@@ -1258,8 +1252,9 @@ function drawGate(c, g, dz, solid) {
   c.beginPath(); slabRect(c, S, u0, v0, u1, v1);
   c.strokeStyle = GREYS[lvl]; c.lineWidth = lw; c.stroke();
   if (solid) {
-    const pulse = 0.35 + 0.15 * Math.sin(t * TAU * 2);
-    const bl = Math.min(g.w, g.h) * 0.22;
+    const next = g === world.nextTh;   // the window you are flying at gets big green target brackets
+    const pulse = (next ? 0.55 : 0.35) + 0.15 * Math.sin(t * TAU * 2);
+    const bl = Math.min(g.w, g.h) * (next ? 0.34 : 0.22);
     c.beginPath();
     for (const [cx, cy, dx, dy] of [[u0, v0, 1, 1], [u1, v0, -1, 1], [u1, v1, -1, -1], [u0, v1, 1, -1]]) {
       const ox = cx - dx * pulse, oy = cy - dy * pulse;
@@ -1267,7 +1262,7 @@ function drawGate(c, g, dz, solid) {
       c.lineTo(sx(S, ox, oy), sy(S, ox, oy));
       c.lineTo(sx(S, ox, oy + dy * bl), sy(S, ox, oy + dy * bl));
     }
-    c.strokeStyle = '#fff'; c.lineWidth = lw; c.stroke();
+    c.strokeStyle = next ? GOO_C : '#fff'; c.lineWidth = next ? lw * 1.6 : lw; c.stroke();
     // drop-line from the sill to the floor so the height reads at a glance
     c.beginPath();
     c.moveTo(sx(S, cu, v0), sy(S, cu, v0)); c.lineTo(sx(S, cu, 0), sy(S, cu, 0));
@@ -1759,14 +1754,14 @@ function crossThing(r, th) {
       else if (res === 'goop') { if (goopRacer(r, null, 1.5, 0.6) && r.isPlayer) popup('GOOPED!', 'mid'); }
       else if (r.isPlayer && (th.kind === 'gate' || th.kind === 'pillars' || th.kind === 'rotor' || th.kind === 'laser')) {
         world.gateStreak++; sfx.gate(world.gateStreak); r.gatesClean++;
-        if (world.gateStreak % 10 === 0) { popup(world.gateStreak + ' CLEAN!', 'mid'); addScore(r, 100); }
+        if (world.gateStreak % 10 === 0) { popup(world.gateStreak + ' CLEAN!', 'mid'); addScore(r, 100, 'stunt'); }
       }
       break;
     }
     case 'ring':
       if ((r.u - th.u) ** 2 + (r.v - th.v) ** 2 < th.r * th.r) {
         giveBoost(r, CFG.ringMul, CFG.ringTime);
-        if (r.isPlayer) { sfx.ring(); popup('BOOST!', 'small'); addScore(r, 25); burst(r.dist + 2, th.u, th.v, 10, 'spark'); }
+        if (r.isPlayer) { sfx.ring(); popup('BOOST!', 'small'); addScore(r, 25, 'stunt'); burst(r.dist + 2, th.u, th.v, 10, 'spark'); }
       }
       break;
     case 'cube':
@@ -1781,7 +1776,7 @@ function crossThing(r, th) {
       if (!(th.back > 0) && Math.abs(r.u - th.u) < magnet && Math.abs(r.v - th.v) < magnet) {
         th.back = 6;
         r.coins = Math.min(99, r.coins + 1);
-        if (r.isPlayer) { world.coinStreak++; sfx.coin(world.coinStreak); addScore(r, 10); }
+        if (r.isPlayer) { world.coinStreak++; sfx.coin(world.coinStreak); addScore(r, 10, 'coin'); }
       }
       break;
     }
@@ -1828,7 +1823,7 @@ function updateRacer(r, ctl, dt) {
       const tier = CFG.swoopTiers[r.swoopTier];
       giveBoost(r, tier[1], tier[2]);
       r.swoopReady = 0; r.swoops++;
-      if (r.isPlayer) { sfx.swoop(r.swoopTier); popup(r.swoopTier ? 'MEGA SWOOP!' : 'SWOOP!', r.swoopTier ? 'mid' : 'small'); addScore(r, r.swoopTier ? 50 : 25); }
+      if (r.isPlayer) { sfx.swoop(r.swoopTier); popup(r.swoopTier ? 'MEGA SWOOP!' : 'SWOOP!', r.swoopTier ? 'mid' : 'small'); addScore(r, r.swoopTier ? 50 : 25, 'swoop'); }
     }
     if (r.isPlayer) sfx.flap(1 + (r.idx - 3) * 0.04);
   }
@@ -2067,7 +2062,7 @@ function updateGlobs(dt) {
             b.hp = 0;
             burst(g.dist, b.u, b.v, 10, 'shard');
             g.owner.coins = Math.min(99, g.owner.coins + 1);
-            if (g.owner.isPlayer) { sfx.coin(5); popup('+1', 'small'); addScore(g.owner, 30); }
+            if (g.owner.isPlayer) { sfx.coin(5); popup('+1 COIN', 'small'); addScore(g.owner, 30, 'coin'); }
             if (!g.big) g.life = 0;
           }
         }
@@ -2115,9 +2110,10 @@ function hitRacer(o, by, kind) {
     const now = world.t;
     world.combo = now - world.comboT < 2 ? Math.min(5, world.combo + 1) : 1;
     world.comboT = now;
-    addScore(by, (kind === 'goo' ? 100 : 250) * world.combo);
-    const words = ['SPLAT!', 'DOUBLE SPLAT!', 'TRIPLE SPLAT!', 'SPLAT x4!', 'SPLAT x5!'];
-    worldPopup(words[world.combo - 1], o.dist, o.u, o.v + 1.8);
+    const pts = (kind === 'goo' ? 100 : 250) * world.combo;
+    addScore(by, pts, kind === 'goo' ? 'splat' : 'item');
+    const words = ['SPLAT!', 'SPLAT x2!', 'SPLAT x3!', 'SPLAT x4!', 'SPLAT x5!'];
+    worldPopup(words[world.combo - 1] + ' +' + pts, o.dist, o.u, o.v + 1.8);
     sfx.splat();
     if (o.def.bark && rand() < 0.35) bark(o, o.def.bark);
   } else if (near(o)) sfx.wallSplat();
@@ -2192,7 +2188,7 @@ function useItem(r) {
         if (o === r || o.dist < r.dist || o.dist - r.dist > 300) continue;
         o.vv += rnd(-1, 1) > 0 ? 9 : -9; o.vu += rnd(-8, 8);
         goopRacer(o, r, 1.2);
-        if (P) addScore(r, 100);
+        if (P) addScore(r, 100, 'item');
       }
       if (P || world.player.dist > r.dist) { world.flash = 0.08; shake(16); sfx.sneeze(); }
       if (P) popup('AAAH-CHOO!', 'big');
@@ -2334,7 +2330,13 @@ function windscreenGoo(n) {
   }
   if (world.wind.length > 4) world.wind.splice(0, world.wind.length - 4);
 }
-function addScore(r, n) { if (r.isPlayer) world.score += n; }
+// Splat Score, kept per category so the results screen can break it down line by line.
+function addScore(r, n, cat) {
+  if (!r.isPlayer) return;
+  world.score += n;
+  const k = cat || 'stunt';
+  world.scoreBy[k] = (world.scoreBy[k] || 0) + n;
+}
 
 // ============================================================================================
 // RACE — setup and grid, countdown and rocket starts, laps, positions, finish and race results
@@ -2349,7 +2351,7 @@ function setupRace(trackIdx, opts) {
   TRACK = buildTrack(trackIdx, { mirror: game.mirror, diff: game.diff });
   world = {
     t: 0, racers: [], globs: [], ents: [], parts: [], popups: [], wind: [], barks: [], decalList: [],
-    state: 'countdown', countdown: 3.2, lastBeep: 4, score: 0, gateStreak: 0, coinStreak: 0, combo: 0, comboT: -9,
+    state: 'countdown', countdown: 3.2, lastBeep: 4, score: 0, scoreBy: {}, gateStreak: 0, coinStreak: 0, combo: 0, comboT: -9,
     shake: 0, flash: 0, hitstop: 0, playerHitCd: 0, playerShotBudget: 2, bumpCd: 0, incoming: 0, warnSide: 0, warnCd: 0,
     doneT: 0, slowmo: 0, player: null, attract: !!opts.attract, camU: 0, camV: 6, camRoll: 0, camF: CFG.focal, camHz: CFG.horizon,
     preFlap: null, goT: 0, raceIndex: game.cup && !opts.attract ? game.cup.race : 0, trackIdx, lastPlace: 7, introT: 0,
@@ -2413,7 +2415,7 @@ function startGo() {
 function rocket(r) {
   giveBoost(r, CFG.rocketMul, 1.2);
   r.rocketed = true;
-  if (r.isPlayer) { popup('ROCKET START!', 'mid'); addScore(r, 100); sfx.swoop(1); }
+  if (r.isPlayer) { popup('ROCKET START!', 'mid'); addScore(r, 100, 'stunt'); sfx.swoop(1); }
 }
 
 function raceStep(dt) {
@@ -2456,7 +2458,7 @@ function raceStep(dt) {
   updateParts(dt);
   updatePlaces();
   if (!w.attract && w.state === 'run') {
-    if (p.place < w.lastPlace) { sfx.posUp(); p.overtakes += w.lastPlace - p.place; addScore(p, 50); popup('OVERTAKE!', 'small'); }
+    if (p.place < w.lastPlace) { sfx.posUp(); p.overtakes += w.lastPlace - p.place; addScore(p, 50, 'stunt'); popup('OVERTAKE!', 'small'); }
     else if (p.place > w.lastPlace) sfx.posDown();
     w.lastPlace = p.place;
     incomingCheck(p);
@@ -2469,7 +2471,7 @@ function raceStep(dt) {
 
 function playerLap(p) {
   const w = world;
-  if (p.lapBonks === 0) { w.cleanLaps++; addScore(p, 300); if (p.lap < CFG.laps) popup('CLEAN LAP!', 'small'); }
+  if (p.lapBonks === 0) { w.cleanLaps++; addScore(p, 300, 'clean'); if (p.lap < CFG.laps) popup('CLEAN LAP!', 'small'); }
   if (p.lap >= CFG.laps) return;   // that was the finish line, not a new lap
   if (p.lap === CFG.laps - 1) {
     popup('FINAL LAP!', 'big'); sfx.fanfare();
@@ -2513,25 +2515,29 @@ function finalizeRace() {
   if (newBestLap) save.bestLap[key] = bestLap;
   save.wallet += p.coins;
   writeSave();
+  const sb = w.scoreBy;
   const res = {
     trackIdx: TRACK.index, pos, time: p.finishTime, bestLap, dnq,
     order: order.map((r, i) => ({ idx: r.idx, time: r.finishTime, isPlayer: r.isPlayer, pts: CFG.points[i] })),
     lines: [
       ['FINISH ' + ORD[pos], finishBonus],
-      ['SPLATS x' + p.hitsGiven, 0],
-      ['ITEM HITS x' + p.itemHits, 0],
-      ['SWOOPS x' + p.swoops, 0],
-      ['COINS x' + p.coins, 0],
-      ['CLEAN LAPS x' + w.cleanLaps, 0],
-      ['FASTEST LAP', fastBonus],
+      ['SPLATS x' + p.hitsGiven, sb.splat || 0],
+      ['ITEM HITS x' + p.itemHits, sb.item || 0],
+      ['SWOOPS x' + p.swoops, sb.swoop || 0],
+      ['COINS x' + p.coins, sb.coin || 0],
+      ['CLEAN LAPS x' + w.cleanLaps, sb.clean || 0],
+      ['RINGS, PASSES, STUNTS', sb.stunt || 0],
+      [fastest ? 'FASTEST LAP!' : 'FASTEST LAP: NOT YOURS', fastBonus],
     ],
     raceScore: w.score + finishBonus + fastBonus,
-    inRace: w.score, newBestRace, newBestLap,
+    newBestRace, newBestLap,
   };
   if (cup && !dnq) {
     order.forEach((r, i) => { cup.pts[r.idx] += CFG.points[i]; });
     cup.score += res.raceScore;
     cup.lastWins = order.map((r) => r.idx);
+    cup.splats += p.hitsGiven;
+    if (bestLap && (!cup.bestLap || bestLap < cup.bestLap)) cup.bestLap = bestLap;
   }
   game.lastResults = res;
 }
@@ -2661,8 +2667,7 @@ function drawRival(c, r, dz) {
   });
   const npx = clamp(size * 0.045, 1, 6);
   const ny = PT.y - size * 0.62 - npx * 8;
-  blockText(c, String(r.idx + 1), PT.x, ny, npx, { align: 'center', color: GREYS[lvl], outline: npx * 0.6 });
-  if (dz < 60 && !world.attract) blockText(c, ORD[r.place], PT.x + npx * 4, ny + npx * 9, Math.max(1, npx * 0.45), { color: GREYS[Math.min(4, lvl + 1)] });
+  if (dz < 110) world.tags.push({ dz, x: PT.x, y: ny, px: npx, text: String(r.idx + 1), color: GREYS[lvl], place: world.attract ? null : r.place });
   const b = world.barks.find((bb) => bb.r === r);
   if (b && dz < 90) {
     const tw = textWidth(b.text, 2) + 14;
@@ -2690,6 +2695,9 @@ function drawGlob(c, g, dz) {
 
 function renderWorld(c) {
   const w = world, T = TRACK, p = w.player;
+  const nb = !w.attract && w.state !== 'done' ? nextBlocker(p) : null;
+  w.nextTh = nb ? nb.th : null;
+  w.tags = [];
   drawSky(c, T);
   drawCorridor(c, T);
   const list = [];
@@ -2705,12 +2713,45 @@ function renderWorld(c) {
   for (const g of w.globs) { const dz = relDz(g.dist); if (dz > CFG.near + 0.5 && dz < CFG.far) list.push({ dz, draw: drawGlob, o: g }); }
   for (const e of w.ents) { const dz = relDz(e.dist); if (dz > CFG.near + 0.5 && dz < CFG.far) list.push({ dz, draw: drawEnt, o: e }); }
   for (const pt of w.parts) { const dz = relDz(pt.dist); if (dz > CFG.near + 0.3 && dz < 120) list.push({ dz, draw: drawPart, o: pt }); }
-  if (!w.attract && w.state !== 'done') {
-    const nb = nextBlocker(p);
-    if (nb) list.push({ dz: nb.dz - 0.05, draw: drawPathMarker, o: nb });
-  }
+  if (nb) list.push({ dz: nb.dz - 0.05, draw: drawPathMarker, o: nb });
   list.sort((a, b) => b.dz - a.dz);
   for (const it of list) it.draw(c, it.o, it.dz, it);
+  drawTags(c);
+}
+
+// Rival number tags, nearest first; a tag that would overlap a nearer one is skipped.
+function drawTags(c) {
+  const placed = [];
+  const tags = world.tags.sort((a, b) => a.dz - b.dz);
+  let ordinals = 0;
+  for (const t of tags) {
+    const w = textWidth(t.text, t.px) + t.px * 2, h = t.px * 9;
+    const opx = Math.max(1, t.px * 0.5);
+    const withOrd = t.place != null && ordinals < 2 && t.dz < 60;
+    const ow = withOrd ? textWidth(ORD[t.place], opx) + 4 : 0;
+    const box = [t.x - w / 2, t.y - t.px, w + ow, h];
+    if (placed.some((b) => box[0] < b[0] + b[2] && b[0] < box[0] + box[2] && box[1] < b[1] + b[3] && b[1] < box[1] + box[3])) continue;
+    placed.push(box);
+    blockText(c, t.text, t.x, t.y, t.px, { align: 'center', color: t.color, outline: t.px * 0.6 });
+    if (withOrd) {
+      ordinals++;
+      blockText(c, ORD[t.place], t.x + w / 2 + 2, t.y + t.px * 3, opx, { color: t.color, outline: 1 });
+    }
+  }
+}
+
+// The goal cue on the next wall: what it is and how far.
+const CUE_WORDS = { gate: 'FLY THROUGH', pillars: 'SLALOM', rotor: 'SPINNER', laser: 'DARK HALF', ball: 'DODGE', blocks: 'SHOOT OR DODGE' };
+function drawNextCue(c, nb, dz) {
+  const th = nb.th;
+  if (nb.ahead < 10 || nb.ahead > 140) return;
+  const S = slabAt(dz);
+  let u = 0, v = CFG.ceil - 1.2;
+  if (th.kind === 'gate') { u = gateCentreU(th, world.t); v = Math.min(CFG.ceil - 0.6, th.v + th.h / 2 + 0.5); }
+  else if (th.kind === 'rotor') { u = th.u; v = Math.min(CFG.ceil - 0.6, th.v + th.len + 0.5); }
+  const word = th.kind === 'rotor' && th.jam > 0 ? 'JAMMED' : CUE_WORDS[th.kind];
+  const px = clamp(S.k * 0.075, 2, 4);
+  blockText(c, word + ' ' + Math.round(nb.ahead) + 'M', sx(S, u, v), sy(S, u, v) - px * 8, px, { align: 'center', color: GOO_C, outline: px * 0.7 });
 }
 
 // The next wall-like thing the player will cross, and how far ahead it is.
@@ -2732,6 +2773,7 @@ function nextBlocker(p) {
 function drawPathMarker(c, nb, dz) {
   const p = world.player;
   if (dz < 6) return;
+  drawNextCue(c, nb, dz);
   const tArrive = world.t + nb.ahead / Math.max(20, p.speed);
   const hit = p.ghost <= 0 && thingBlocks(nb.th, p.u, p.v, tArrive) === 'bonk';
   if (hit && Math.floor(world.t * 8) % 2) return;
@@ -2765,10 +2807,14 @@ function drawPlayerCraft(c) {
     splats: p.splats, roll: clamp(p.vu / CFG.latMax, -1, 1) * 0.28 + clamp(-p.vv * 0.012, -0.1, 0.1) * 0, alpha: blink ? 0.4 : 1,
   });
   if (p.boostT > 0) {
-    // exhaust flame: a few blocky white rects under the craft
-    c.fillStyle = '#fff';
+    // boost flame: a stream of goo-green blocks pouring out under the craft
     const rng = mulberry32(Math.floor(world.t * 40));
-    for (let i = 0; i < 6; i++) c.fillRect(x - 14 + rng() * 28, y + 50 + rng() * 40, 6, 6 + rng() * 10);
+    for (let i = 0; i < 14; i++) {
+      const d = rng();
+      c.fillStyle = d < 0.3 ? '#fff' : GOO_C;
+      const s = 10 - d * 6;
+      c.fillRect(x - 16 + rng() * 32 - s / 2, y + 48 + d * 70, s, s * 1.4);
+    }
   }
 }
 
@@ -2921,29 +2967,37 @@ function drawHUD(c) {
   blockText(c, fmtTime(raceTime()), 30, 26, 5, { color: '#fff', shadow: 3 });
   blockText(c, 'SCORE', 30, 74, 2, { color: '#909090' });
   blockText(c, String(w.score), 30, 92, 4, { color: '#fff' });
-  const lastLap = p.lapTimes.length ? p.lapTimes[p.lapTimes.length - 1] : null;
-  if (lastLap) blockText(c, 'LAST ' + fmtTime(lastLap), 30, 128, 2, { color: '#909090' });
+  // under the strip: which race this is and what it takes to go on
+  const cup = game.cup;
+  const what = (cup && cup.mode === 'cup' ? 'RACE ' + (cup.race + 1) + '/5 · ' : '') + T.def.name + (cup && cup.mode === 'cup' ? ' · TOP 5 ADVANCE' : '');
+  blockText(c, what, W / 2, 184, 2, { align: 'center', color: '#909090' });
   // ---- top right: coins and retry tokens
   c.fillStyle = '#fff'; c.fillRect(W - 168, 28, 26, 26);
   blockText(c, 'x' + p.coins, W - 30, 26, 5, { align: 'right', color: '#fff', shadow: 3 });
+  blockText(c, 'COINS', W - 30, 66, 2, { align: 'right', color: '#585858' });
   if (game.cup && game.cup.mode === 'cup') {
     for (let i = 0; i < CFG.tokens; i++) {
-      const x = W - 50 - i * 34, y = 80;
+      const x = W - 50 - i * 34, y = 98;
       const on = i < game.cup.tokens;
       c.strokeStyle = on ? '#fff' : '#3a3a3a'; c.lineWidth = 4; c.lineCap = 'square';
       c.beginPath(); c.moveTo(x - 9, y + 16); c.lineTo(x + 5, y + 2); c.stroke();          // wrench handle
       c.beginPath(); c.arc(x + 8, y - 1, 7, Math.PI * 0.75, Math.PI * 2.25); c.stroke();   // wrench jaw
     }
-    blockText(c, 'RETRIES', W - 30, 108, 2, { align: 'right', color: '#585858' });
+    blockText(c, 'RETRIES', W - 30, 124, 2, { align: 'right', color: '#585858' });
   }
-  // ---- left edge: race-order ladder by racer number, the player inverted
-  const lx = 30, ly = 176;
-  w.order.forEach((r, i) => {
-    const y = ly + i * 38;
-    if (r === p) { c.fillStyle = '#fff'; c.fillRect(lx - 6, y - 6, 46, 34); blockText(c, String(r.idx + 1), lx + 17, y, 3, { align: 'center', color: '#000' }); }
-    else blockText(c, String(r.idx + 1), lx + 17, y, 3, { align: 'center', color: r.goop > 0 ? GOO_C : r.nemesis ? '#fff' : '#909090' });
-    blockText(c, String(i + 1), lx + 52, y + 6, 2, { color: '#3a3a3a' });
+  // ---- left edge: the race order, top 3 and you, the player inverted
+  const lx = 30, ly = 150;
+  blockText(c, 'ORDER', lx, ly, 2, { color: '#585858' });
+  const rows = w.order.slice(0, 3);
+  if (p.place > 2) rows.push(p);
+  rows.forEach((r, k) => {
+    const y = ly + 26 + k * 30 + (k === 3 ? 12 : 0);
+    const me = r === p;
+    const label = (r.place + 1) + ' ' + (me ? 'YOU' : r.def.name.split(' ').pop());
+    if (me) { c.fillStyle = '#fff'; c.fillRect(lx - 6, y - 6, 172, 26); }
+    blockText(c, label, lx, y, 2, { color: me ? '#000' : r.goop > 0 ? GOO_C : '#c8c8c8' });
   });
+  if (p.place > 3) blockText(c, '...', lx, ly + 26 + 3 * 30 - 8, 2, { color: '#585858' });
   // ---- bottom left: item slot and goo tank
   const ix = 30, iy = H - 122, isz = 86;
   c.fillStyle = '#000'; c.fillRect(ix, iy, isz, isz);
@@ -2980,7 +3034,7 @@ function drawHUD(c) {
   const mx = W / 2 - 180, my = H - 54, mw = 360, mh = 40;
   c.fillStyle = '#000'; c.fillRect(mx, my, mw, mh);
   strokeBox(c, mx, my, mw, mh, 2, '#585858');
-  blockText(c, 'REAR', mx + 6, my - 16, 2, { color: '#3a3a3a' });
+  blockText(c, 'REAR VIEW', mx + 6, my - 16, 2, { color: '#585858' });
   c.save(); c.beginPath(); c.rect(mx + 2, my + 2, mw - 4, mh - 4); c.clip();
   for (const r of w.racers) {
     if (r === p) continue;
@@ -3014,7 +3068,7 @@ function drawHUD(c) {
 // CUP — grand prix progression: points, retry tokens, standings, trophies and the mirror unlock
 // ============================================================================================
 function startCup(mode) {
-  game.cup = { mode, race: 0, tracks: mode === 'quick' ? [game.quickTrack] : [0, 1, 2, 3, 4], pts: [0, 0, 0, 0, 0, 0, 0, 0], tokens: CFG.tokens, score: 0, lastWins: null };
+  game.cup = { mode, race: 0, tracks: mode === 'quick' ? [game.quickTrack] : [0, 1, 2, 3, 4], pts: [0, 0, 0, 0, 0, 0, 0, 0], tokens: CFG.tokens, score: 0, lastWins: null, splats: 0, bestLap: 0 };
 }
 function cupStandings() {
   const cup = game.cup;
@@ -3138,7 +3192,7 @@ const SCENES = {
     draw(c) {
       applyCamera();
       renderWorld(c);
-      dim(c, 0.55);
+      dim(c, 0.68);
       // the logo: giant blocks, one goo drip off the second O
       const lx = W / 2, ly = 62, px = 17;
       blockText(c, 'GOO PRIX', lx, ly, px, { align: 'center', color: '#fff', shadow: 8, skew: 0.08 });
@@ -3148,7 +3202,8 @@ const SCENES = {
       c.fillStyle = GOO_C;
       c.fillRect(ox - px * 0.6, ly + 7 * px - 2, px * 1.2, drip);
       c.beginPath(); c.arc(ox, ly + 7 * px + drip, px * 0.75, 0, TAU); c.fill();
-      blockText(c, 'A FLAP-AND-SPLAT GRAND PRIX', lx, ly + 7 * px + 42, 3, { align: 'center', color: '#c8c8c8' });
+      blockText(c, 'A FLAP-AND-SPLAT GRAND PRIX', lx, ly + 7 * px + 38, 3, { align: 'center', color: '#c8c8c8' });
+      blockText(c, 'FLAP THROUGH EVERY WINDOW · SPLAT RIVALS · WIN 5 RACES', lx, ly + 7 * px + 74, 2, { align: 'center', color: GOO_C });
       const labels = {
         start: game.mirror || save.unlockedMirror ? 'START CUP' : 'START CUP',
         quick: 'QUICK RACE',
@@ -3156,18 +3211,24 @@ const SCENES = {
         diff: 'DIFFICULTY: ' + DIFFS[game.diff],
         howto: 'HOW TO PLAY',
       };
-      const bw = 420, bh = 46, bx = W / 2 - bw / 2;
-      TITLE_ITEMS.forEach((id, i) => drawButton(c, id, labels[id], bx, 300 + i * 56, bw, bh, game.menu.i === i, { arrows: id === 'diff' || id === 'scheme' }));
+      const bw = 420, bh = 44, bx = W / 2 - bw / 2;
+      TITLE_ITEMS.forEach((id, i) => drawButton(c, id, labels[id], bx, 310 + i * 52, bw, bh, game.menu.i === i, { arrows: id === 'diff' || id === 'scheme' }));
       // best line and trophies
       const best = save.bestCup ? 'BEST CUP ' + save.bestCup.toLocaleString('en-US') : 'NO CUP WON YET';
-      blockText(c, best, W / 2, 590, 3, { align: 'center', color: '#fff' });
-      let tx = W / 2 - 2.5 * 48;
+      blockText(c, best, W / 2, 582, 3, { align: 'center', color: '#fff' });
+      let tx = W / 2 - 3.2 * 48;
+      let won = 0;
       for (const cupName of ['gloop', 'regloop']) for (let d = 0; d < 3; d++) {
         const tr = save.trophies[cupName + ':' + d];
-        drawTrophy(c, tx, 642, 26, tr ? 4 - tr : 0);
+        if (tr) won++;
+        drawTrophy(c, tx, 628, 26, tr ? 4 - tr : 0);
         tx += 48;
       }
-      blockText(c, 'SPACE FLAP   A/D STEER   S DIVE   CLICK/F GOO   E ITEM   ESC PAUSE', W / 2, 690, 2, { align: 'center', color: '#585858' });
+      blockText(c, 'CUPS ' + won + '/6', tx - 10, 620, 2, { color: '#909090' });
+      // the controls strip, on its own solid band
+      c.fillStyle = '#000'; c.fillRect(0, 664, W, 56);
+      c.fillStyle = '#262626'; c.fillRect(0, 664, W, 2);
+      blockText(c, 'SPACE FLAP   A/D STEER   S DIVE   CLICK/F GOO   E ITEM   ESC PAUSE', W / 2, 684, 2, { align: 'center', color: '#fff' });
     },
   },
 
@@ -3330,7 +3391,7 @@ const SCENES = {
       opts[sel].go();
     },
     draw(c) {
-      applyCamera(); renderWorld(c); dim(c, 0.88);
+      applyCamera(); renderWorld(c); dim(c, 0.93);
       drawResults(c, game.lastResults, game.sceneT);
     },
   },
@@ -3412,12 +3473,13 @@ function drawResults(c, res, t) {
     const a = clamp((t - 0.4 - i * 0.12) / 0.2, 0, 1);
     c.globalAlpha = a;
     blockText(c, ln[0], px0, y, 2, { color: '#c8c8c8' });
-    if (ln[1]) blockText(c, '+' + ln[1], W - 60, y, 2, { align: 'right', color: '#fff' });
+    blockText(c, '+' + ln[1], W - 60, y, 2, { align: 'right', color: ln[1] ? '#fff' : '#585858' });
     c.globalAlpha = 1;
   });
   const shown = Math.round(res.raceScore * clamp((t - 0.5) / 1.2, 0, 1));
-  blockText(c, 'IN-RACE ' + res.inRace, px0, 156 + res.lines.length * 30, 2, { color: '#909090' });
-  blockText(c, String(shown), W - 60, 156 + res.lines.length * 30 + 26, 7, { align: 'right', color: '#fff', shadow: 4 });
+  c.fillStyle = '#585858'; c.fillRect(px0, 156 + res.lines.length * 30 - 4, W - 60 - px0, 2);
+  blockText(c, 'RACE TOTAL', px0, 156 + res.lines.length * 30 + 14, 2, { color: '#909090' });
+  blockText(c, String(shown), W - 60, 156 + res.lines.length * 30 + 6, 7, { align: 'right', color: '#fff', shadow: 4 });
   if (res.newBestRace && !res.dnq && t > 1.6) {
     c.save(); c.translate(px0 + 112, 508); c.rotate(-0.12);
     const s = 1 + Math.max(0, 0.4 - (t - 1.6)) * 2;
@@ -3517,20 +3579,23 @@ function drawPodium(c, t) {
   const sx0 = 840;
   blockText(c, 'FINAL STANDINGS', sx0, 140, 3, { color: '#fff' });
   st.forEach((idx, i) => {
-    const y = 180 + i * 34;
+    const y = 180 + i * 29;
     const me = idx === game.racer;
-    if (me) { c.fillStyle = '#fff'; c.fillRect(sx0 - 8, y - 6, 400, 30); }
+    if (me) { c.fillStyle = '#fff'; c.fillRect(sx0 - 8, y - 6, 400, 26); }
     blockText(c, (i + 1) + '  ' + RACERS[idx].name, sx0, y, 2, { color: me ? '#000' : '#c8c8c8' });
     blockText(c, String(cup.pts[idx]), sx0 + 380, y, 2, { align: 'right', color: me ? '#000' : '#fff' });
   });
-  blockText(c, 'CUP SCORE', sx0, 470, 2, { color: '#909090' });
-  blockText(c, cup.score.toLocaleString('en-US'), sx0, 492, 6, { color: '#fff', shadow: 4 });
+  blockText(c, 'CUP SCORE', sx0, 420, 2, { color: '#909090' });
+  blockText(c, cup.score.toLocaleString('en-US'), sx0, 440, 6, { color: '#fff', shadow: 4 });
+  blockText(c, 'SPLATS x' + cup.splats + '   RETRIES LEFT ' + cup.tokens, sx0, 494, 2, { color: '#c8c8c8' });
+  blockText(c, 'BEST LAP ' + (cup.bestLap ? fmtTime(cup.bestLap) : '-'), sx0, 516, 2, { color: '#c8c8c8' });
   if (cup.unlocked || (SHOT && place < 3)) {
-    c.fillStyle = GOO_C; c.fillRect(sx0 - 8, 552, 400, 34);
-    blockText(c, 'REGLOOP CUP UNLOCKED!', sx0 + 192, 562, 2, { align: 'center', color: '#000' });
+    c.fillStyle = GOO_C; c.fillRect(sx0 - 8, 542, 400, 32);
+    blockText(c, 'REGLOOP CUP UNLOCKED!', sx0 + 192, 551, 2, { align: 'center', color: '#000' });
   }
-  drawButton(c, 'again', 'PLAY AGAIN', sx0 - 8, 604, 190, 44, game.podMenu.i === 0, { px: 2 });
-  drawButton(c, 'title', 'TITLE', sx0 + 202, 604, 190, 44, game.podMenu.i === 1, { px: 2 });
+  drawButton(c, 'again', 'PLAY AGAIN', sx0 - 8, 590, 190, 44, game.podMenu.i === 0, { px: 2 });
+  drawButton(c, 'title', 'TITLE', sx0 + 202, 590, 190, 44, game.podMenu.i === 1, { px: 2 });
+  blockText(c, 'ENTER: PLAY AGAIN', sx0 + 192, 650, 2, { align: 'center', color: '#585858' });
 }
 
 function drawGameOver(c, t) {
@@ -3661,7 +3726,7 @@ function poseRace() {
   burst(crumb.dist, crumb.u, crumb.v, 16, 'goo');
   for (const pt of world.parts) { pt.dist += pt.vd * 0.08; pt.u += pt.vu * 0.08; pt.v += pt.vv * 0.08; }
   world.popups = [];
-  worldPopup('SPLAT!', crumb.dist, crumb.u, crumb.v + 1.7);
+  worldPopup('SPLAT x2! +200', crumb.dist, crumb.u, crumb.v + 1.7);
   world.popups[0].t = 0.3;
   for (const [du, dv, r] of [[-3.2, 2.1, 1.1], [3.6, -1.8, 0.9], [-4.4, -2.4, 1.3]]) addDecal(g, g.u + du + (du > 0 ? g.w / 2 : -g.w / 2), g.v + dv, r);
   world.ents = [];
@@ -3671,6 +3736,78 @@ function poseRace() {
   updatePlaces();
   world.lastPlace = p.place;
   world.camU = p.u - 0.5; world.camV = p.v + CFG.camUp - 0.25; world.camRoll = -0.045; world.camF = 720; world.camHz = CFG.horizon + 6;
+  world.shake = 0; world.flash = 0;
+  input.lastDevice = 'keys';
+  applyCamera();
+  updateAim(p, 1);
+}
+
+// Second gameplay pose: Bar Code on the final lap, a goo-jammed spinner ahead and items in the air.
+function poseHazard() {
+  startCup('cup');
+  game.cup.race = 2;
+  game.cup.pts = [25, 6, 18, 22, 8, 14, 10, 27];
+  game.cup.score = 21400;
+  game.cup.tokens = 3;
+  game.racer = 0;
+  setupRace(2);
+  enterScene('race');
+  world.state = 'run'; world.goT = 0;
+  world.autopilot = true;
+  simulate(10);
+  world.autopilot = false;
+  const T = TRACK, L = T.L, p = world.player;
+  const blocking = (k) => k === 'gate' || k === 'pillars' || k === 'rotor' || k === 'laser' || k === 'blocks' || k === 'ball';
+  let best = null;
+  for (const th of T.things) {
+    if (th.kind !== 'rotor') continue;
+    let score = 0, clear = true;
+    for (const o of T.things) {
+      const d = wrap(o.s - (th.s - 34), L);
+      if (d < 33 && blocking(o.kind)) clear = false;
+      if (d > 4 && d < 70) { if (o.kind === 'ring') score += 2; if (o.kind === 'cube') score += 2; if (o.kind === 'coin') score += 1; }
+    }
+    if (clear) score += 10;
+    if (!best || score > best.score) best = { th, score };
+  }
+  const rot = best ? best.th : T.things.find((th) => blocking(th.kind));
+  for (const th of T.things) { th.back = 0; if (th.blocks) for (const b of th.blocks) b.hp = 1; }
+  world.t = world.goT + 71.2;
+  if (rot.kind === 'rotor') {
+    rot.jam = 2.4;
+    rot.spun = Math.PI / 5;
+    rot.decals = [];
+    addDecal(rot, rot.u + 0.4, rot.v - 0.3, 1.4);
+    addDecal(rot, rot.u + 3.6, rot.v + 1.2, 0.9);
+  }
+  // bring a cube row, a ring and a coin arc into the stretch before the spinner
+  T.things.filter((th) => th.kind === 'cube').slice(0, 3).forEach((cb, i) => Object.assign(cb, { s: rot.s - 9, u: clamp(rot.u + (i - 1) * 5.5, -10.5, 10.5), v: 11.8, gold: i === 2 }));
+  T.things.filter((th) => th.kind === 'ring').slice(0, 1).forEach((rg) => Object.assign(rg, { s: rot.s - 6, u: clamp(rot.u + 6.5, -9.5, 9.5), v: clamp(rot.v - 3, 2.5, 11) }));
+  T.things.filter((th) => th.kind === 'coin').slice(0, 5).forEach((cn, i) => Object.assign(cn, { s: rot.s - 19 + i * 3, u: clamp(rot.u + 2.5 - i * 1.2, -10.5, 10.5), v: clamp(rot.v + 1.2 - i * 0.6, 1.5, 12) }));
+  p.dist = 2 * L + rot.s - 34; p.u = clamp(rot.u + 5.4, -10, 10); p.v = clamp(rot.v + 2.6, 2, 12); p.vu = -2; p.vv = 3;
+  p.lap = 2; p.lapTimes = [33.9, 32.4]; p.lapStart = world.t - 4.9;
+  p.speed = 66; p.boostT = 0; p.coins = 9; p.tank = 84; p.item = null; p.shield = 6.5; p.flapAnim = 1; p.stun = 0; p.invuln = 0; p.goop = 0; p.splats = [];
+  world.score = 18620;
+  const at = (idx) => world.racers.find((r) => r.idx === idx);
+  const place = (idx, d, u, v, extra) => Object.assign(at(idx), { dist: p.dist + d, u: clamp(u, -10.5, 10.5), v: clamp(v, 1.2, 12.8), vu: 0, vv: 0, stun: 0, invuln: 0, goop: 0, shield: 0, splats: [], finished: false, flapAnim: 0 }, extra || {});
+  place(7, 120, 0, 6);                                                                          // Count Crumb, leading
+  place(2, 90, 1, 6);                                                                           // Sprocket
+  place(3, 70, 2, 7);                                                                           // Nana Fang
+  const pickle = place(5, 24, rot.u - 5.5, rot.v + 3.8, { flapAnim: 1 });                          // the Sock's victim, about to clear the spinner
+  place(6, 16, p.u - 7.5, p.v - 3.2, { goop: 1.1, splats: [{ x: 0.15, y: -0.2, seed: 61, t: 3 }] });
+  place(4, -20, p.u - 2, p.v);                                                                  // Moldy Greg behind
+  place(1, -48, 4, 5);
+  world.globs = [{ dist: p.dist + 21, u: p.u - 3.4, v: p.v - 1.2, vs: 260, vu: -6, vv: 1, owner: p, life: 0.9, big: true, r: 1.5, seed: 4, hit: [] }];
+  world.ents = [
+    { kind: 'sock', dist: pickle.dist - 7, u: pickle.u + 1.6, v: pickle.v - 1.1, target: pickle, owner: at(4), hp: 2, life: 6, vu: 0, vv: 0 },
+    { kind: 'balloon', dist: p.dist + 30, u: p.u - 3.6, v: p.v - 1.6, uu: p.u - 3.6, owner: at(6), hp: 1, life: 12, phase: 0.4 },
+  ];
+  world.parts = []; world.wind = []; world.barks = [];
+  world.popups = [];
+  for (const r of world.racers) syncCrossings(r);
+  updatePlaces();
+  world.lastPlace = p.place;
+  world.camU = p.u + 0.4; world.camV = p.v + CFG.camUp - 0.3; world.camRoll = 0.03; world.camF = CFG.focal; world.camHz = CFG.horizon - 4;
   world.shake = 0; world.flash = 0;
   input.lastDevice = 'keys';
   applyCamera();
@@ -3691,8 +3828,8 @@ function poseResults() {
   const res = {
     trackIdx: 3, pos: 0, time: times[0], bestLap: 30.84, dnq: false,
     order: order.map((idx, i) => ({ idx, time: times[i], isPlayer: idx === game.racer, pts: CFG.points[i] })),
-    lines: [['FINISH 1ST', 4000], ['SPLATS x9', 0], ['ITEM HITS x3', 0], ['SWOOPS x6', 0], ['COINS x10', 0], ['CLEAN LAPS x2', 0], ['FASTEST LAP', 500]],
-    inRace: 7350, raceScore: 11850, newBestRace: true, newBestLap: true,
+    lines: [['FINISH 1ST', 4000], ['SPLATS x9', 1700], ['ITEM HITS x3', 1000], ['SWOOPS x6', 200], ['COINS x10', 160], ['CLEAN LAPS x2', 600], ['RINGS, PASSES, STUNTS', 3690], ['FASTEST LAP!', 500]],
+    raceScore: 11850, newBestRace: true, newBestLap: true,
   };
   order.forEach((idx, i) => { game.cup.pts[idx] += CFG.points[i]; });
   game.cup.score += res.raceScore;
@@ -3708,6 +3845,7 @@ function posePodium() {
   game.cup.pts = [66, 11, 44, 52, 18, 30, 24, 61];
   game.cup.score = 52900;
   game.cup.lastWins = [0, 7, 3, 2, 5, 6, 4, 1];
+  game.cup.splats = 31; game.cup.bestLap = 30.84; game.cup.tokens = 2;
   enterScene('podium');
   game.sceneT = 2.4;
 }
@@ -3717,6 +3855,7 @@ function runShot(name) {
   game.diff = 1; game.racer = 0; game.scheme = 'keys'; game.mirror = false;
   save.bestCup = 48250; save.trophies = { 'gloop:0': 1, 'gloop:1': 1, 'gloop:2': 2, 'regloop:0': 3 }; save.unlockedMirror = name !== 'podium';
   if (name === 'race') poseRace();
+  else if (name === 'hazard') poseHazard();
   else if (name === 'results') poseResults();
   else if (name === 'podium') posePodium();
   else if (name === 'howto') { enterScene('title'); simulate(3); enterScene('howto'); }
