@@ -1,6 +1,6 @@
 [
-  { "name": "1-play.jpg", "query": "?shot=play&seed=1" },
-  { "name": "2-zerog.jpg", "query": "?shot=zerog&seed=1" },
-  { "name": "3-boss.jpg", "query": "?shot=boss&seed=1" },
-  { "name": "4-results.jpg", "query": "?shot=results&seed=1" }
+  { "name": "1-play-boss.jpg", "query": "?shot=boss&seed=1" },
+  { "name": "2-title.jpg", "query": "?shot=title&seed=1" },
+  { "name": "3-draft.jpg", "query": "?shot=draft&seed=1" },
+  { "name": "4-run-complete.jpg", "query": "?shot=final&seed=1" }
 ]

@@ -4,7 +4,7 @@
 [![rank](https://make.fun/badge/best-game-01/j23xx/goo-prix/rank.svg)](https://make.fun/bounty/best-game-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=best-game-01)
 [![reward](https://make.fun/badge/best-game-01/j23xx/goo-prix/reward.svg)](https://make.fun/bounty/best-game-01?utm_source=github&utm_medium=readme&utm_campaign=best-game-01)
 
-GOO PRIX is a first-person flap-and-splat **score attack**. You fly a goo-firing ship down a corridor through five worlds, shooting everything for points, chaining hits into a multiplier and threading the window in every wall, while every crash, bolt and drip of goop costs you. Each world breaks the rules a little more than the last, and the sixth stage is a boss fight against **Mister Spotless**, a chrome cleaning robot you beat by making him filthy.
+GOO PRIX is a first-person flap-and-splat **score attack**. You fly a goo-firing ship down a corridor through five worlds, shooting everything for points, chaining hits into a multiplier and threading the window in every wall, while every crash, bolt and drip of goop costs you. Each world breaks the rules a little more than the last, between worlds you draft one of twelve **Mix-ins** that bend the rules in your favour, and the sixth stage is a boss fight against **Mister Spotless**, a chrome cleaning robot you beat by making him filthy. Then there is **Endless Slop**.
 
 Everything is drawn in code on a 2D canvas: its own 3D projection, cel-shaded manga ships with screentone and glints, wet goo with specular highlights and running drips, comic halftone and onomatopoeia when your multiplier climbs, synthesized music and sound effects, and an announcer voiced by the browser's own offline speech voices. No images, no libraries, no network.
 
@@ -31,7 +31,26 @@ Then open http://localhost:8080 in desktop Chrome. Any static file server pointe
 
 **Knocks.** Hitting a wall costs 500, a hazard 300, an enemy bolt 200, a goop curtain 150, and every knock wipes your multiplier. Grinding the side rails bleeds 50 a second.
 
-**The run.** Beat each level's quota to move on; 3x the quota is an S. You get 3 continues for the whole run, and Practice lets you play any stage on its own.
+**The run.** Beat each level's quota to move on; 3x the quota is an S. You get 3 continues for the whole run, and Practice lets you play any stage on its own. A cleared level can be retried for a better grade.
+
+**Mix-ins.** After each cleared level, pick 1 of 3 (or press R to reroll for 1,000 points). Every Mix-in you own raises the next quotas by 20%.
+
+| Mix-in | Effect |
+| --- | --- |
+| THICK COAT | Hits splash anything within 2.5 m for 1 |
+| TWIN NOZZLE | Fire two globs; shots cost 25% more |
+| BOTTOMLESS BUCKET | Goo tank 160, refills 30% faster |
+| STICKY CHAIN | The chain lasts 4.5 s instead of 2.5 s |
+| PRIMER | Never below x2; a knock halves the chain instead of ending it |
+| NON-STICK HULL | Knocks cost half, and the first one each level is free |
+| NEEDLE THREADER | Windows +250, bullseyes +600 and a full tank |
+| OVERSPILL | The multiplier cap goes from x8 to x10 |
+| GOLD LEAF | Goldies twice as often, worth 1,500 |
+| DRIBBLE | Every kill drips a homing droplet at the next target |
+| HOT SAUCE | All points +50%, but knocks cost double |
+| TURPENTINE | Tanks and aces lose an armour pip; boss stains +50% |
+
+**Endless Slop.** The six stages loop with a Mix-in draft after every one; each loop flies 10% faster and asks 50% more. Miss one quota and the run is over. The best five runs are kept.
 
 | # | Level | World | The new rule |
 | --- | --- | --- | --- |
@@ -48,9 +67,17 @@ Pick from eight ships, each with its own pilot, hull, stats (speed, handling, go
 
 ## What is in here
 
-- `game/index.html` is the page shell; the game is plain scripts in `game/src/`, one concern per file: `config`, `audio`, `voice` (the announcer), `draw` (goo and cel shading), `tracks`, `projection`, `skies`, `corridor`, `gates`, `craft` (the eight ships), `physics`, `levels`, `score`, `targets`, `boss`, `race` (a level's run and its twists), `controls`, `camera`, `render`, `hud`, `campaign`, `scenes`, `shots` and `main`.
+- `game/index.html` is the page shell. The game is plain scripts in `game/src/`, one job per file, loaded screens and rules first, then the engine:
+  - `scenes/`: `scene-flow`, `title`, `how-to-play`, `ship-select`, `level-intro`, `stage-play`, `pause`, `level-results`, `mixin-draft`, `run-complete`, `game-over`
+  - `play/`: `levels`, `mixins`, `run-progress`, `scoring`, `stage-run` (a level and its twist), `controls`, `boss`, `targets`, `items`, `goo-shots`, `ships`, `flight`, `autopilot`
+  - `ui/`: `hud`, `menu-widgets`
+  - `audio/`: `sound` (synth and music), `announcer` (offline speech)
+  - `world/`: `worlds`, `skies`, `corridor`, `gates`
+  - `render/`: `projection`, `camera`, `world-render`, `goo-paint`, `effects`, `block-font`
+  - `core/`: `util`, `config`, `save`, `input`
+  - `dev/shot-poses` and `main`
 - `main.ts` hands the entry in: it copies `game/` and `screenshots/` and writes the dossier with `vendor/makefun-game.ts`.
-- `?shot=play`, `?shot=zerog`, `?shot=boss`, `?shot=results`, `?shot=final`, `?shot=select`, `?shot=howto` and `?shot=level&l=2&t=30` jump to the deterministic poses used for the screenshots.
+- `?shot=boss`, `?shot=title`, `?shot=draft`, `?shot=final`, `?shot=play`, `?shot=zerog`, `?shot=results`, `?shot=select`, `?shot=howto` and `?shot=level&l=2&t=30` jump to the deterministic poses used for the screenshots.
 
 ---
 

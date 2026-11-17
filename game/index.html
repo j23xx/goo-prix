@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GOO PRIX</title>
-<meta name="description" content="GOO PRIX: a flap-and-splat score attack. Five worlds that each bend the rules (rhythm, blizzards, flipped gravity, zero-G lock-ons), then a chrome cleaning-robot boss to make filthy.">
+<meta name="description" content="GOO PRIX: a flap-and-splat score attack. Five worlds that each bend the rules (rhythm, blizzards, flipped gravity, zero-G lock-ons), twelve Mix-in perks to draft between them, then a chrome cleaning-robot boss to make filthy, and an Endless mode.">
 <style>
   :root {
     --page: #2a2a2f;
@@ -79,40 +79,53 @@
     <button id="b-sound" title="Sound on/off (M)" aria-label="Sound on or off"><svg><use id="i-sound-use" href="#i-sound"/></svg></button>
     <button id="b-full" title="Fullscreen" aria-label="Fullscreen"><svg><use href="#i-full"/></svg></button>
   </div>
-  <div id="caption">Shoot everything, chain your hits, don't get knocked. Five worlds, one spotless boss. &nbsp;·&nbsp; <b>↑</b> flap &nbsp; <b>← →</b> steer &nbsp; <b>↓</b> dive &nbsp; <b>SPACE</b> shoot goo &nbsp; <b>X</b> item</div>
+  <div id="caption">A flap-and-splat score attack: 5 worlds that each bend the rules, 12 Mix-ins to draft, 8 ships, the boss Mister Spotless, and Endless Slop. &nbsp;·&nbsp; <b>↑</b> flap &nbsp; <b>← →</b> steer &nbsp; <b>↓</b> dive &nbsp; <b>SPACE</b> shoot goo &nbsp; <b>X</b> item</div>
 </div>
 <p id="status" role="status" aria-live="polite"></p>
-<script src="src/util.js"></script>
-<script src="src/config.js"></script>
-<script src="src/save.js"></script>
-<script src="src/audio.js"></script>
-<script src="src/voice.js"></script>
-<script src="src/font.js"></script>
-<script src="src/input.js"></script>
-<script src="src/draw.js"></script>
-<script src="src/tracks.js"></script>
-<script src="src/projection.js"></script>
-<script src="src/skies.js"></script>
-<script src="src/corridor.js"></script>
-<script src="src/gates.js"></script>
-<script src="src/craft.js"></script>
-<script src="src/physics.js"></script>
-<script src="src/ai.js"></script>
-<script src="src/goo.js"></script>
-<script src="src/items.js"></script>
-<script src="src/fx.js"></script>
-<script src="src/levels.js"></script>
-<script src="src/score.js"></script>
-<script src="src/targets.js"></script>
-<script src="src/boss.js"></script>
-<script src="src/race.js"></script>
-<script src="src/controls.js"></script>
-<script src="src/camera.js"></script>
-<script src="src/render.js"></script>
-<script src="src/hud.js"></script>
-<script src="src/campaign.js"></script>
-<script src="src/scenes.js"></script>
-<script src="src/shots.js"></script>
+<!-- the game: screens and rules first, then the engine; plain scripts sharing one scope -->
+<script src="src/core/util.js"></script>
+<script src="src/core/config.js"></script>
+<script src="src/scenes/scene-flow.js"></script>
+<script src="src/ui/menu-widgets.js"></script>
+<script src="src/scenes/title.js"></script>
+<script src="src/scenes/how-to-play.js"></script>
+<script src="src/scenes/ship-select.js"></script>
+<script src="src/scenes/level-intro.js"></script>
+<script src="src/scenes/stage-play.js"></script>
+<script src="src/scenes/pause.js"></script>
+<script src="src/scenes/level-results.js"></script>
+<script src="src/scenes/mixin-draft.js"></script>
+<script src="src/scenes/run-complete.js"></script>
+<script src="src/scenes/game-over.js"></script>
+<script src="src/play/levels.js"></script>
+<script src="src/play/mixins.js"></script>
+<script src="src/play/run-progress.js"></script>
+<script src="src/play/scoring.js"></script>
+<script src="src/play/stage-run.js"></script>
+<script src="src/play/controls.js"></script>
+<script src="src/ui/hud.js"></script>
+<script src="src/play/boss.js"></script>
+<script src="src/play/targets.js"></script>
+<script src="src/play/items.js"></script>
+<script src="src/play/goo-shots.js"></script>
+<script src="src/audio/announcer.js"></script>
+<script src="src/play/ships.js"></script>
+<script src="src/play/flight.js"></script>
+<script src="src/play/autopilot.js"></script>
+<script src="src/audio/sound.js"></script>
+<script src="src/core/save.js"></script>
+<script src="src/render/block-font.js"></script>
+<script src="src/core/input.js"></script>
+<script src="src/render/goo-paint.js"></script>
+<script src="src/world/worlds.js"></script>
+<script src="src/render/projection.js"></script>
+<script src="src/world/skies.js"></script>
+<script src="src/world/corridor.js"></script>
+<script src="src/world/gates.js"></script>
+<script src="src/render/effects.js"></script>
+<script src="src/render/camera.js"></script>
+<script src="src/render/world-render.js"></script>
+<script src="src/dev/shot-poses.js"></script>
 <script src="src/main.js"></script>
 
 </body>
