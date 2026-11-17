@@ -25,7 +25,7 @@ Then open http://localhost:8080 in desktop Chrome. Any static file server pointe
 | Dive, then flap for a Swoop boost (in zero-G: thrust down) | Hold ↓ |
 | Shoot goo (auto-aims; in zero-G hold to lock up to six, release to fire) | Space |
 | Use item | X (or Shift) |
-| Pause / restart / mute | Esc / R / M |
+| Pause / restart / mute / hide side panels | Esc or P / R / M / H |
 
 **Scoring.** Floaters 50, splitters 80 (they split), zippers 120, armoured tanks 250, rival aces that shoot back 400, fleeing goldies 1000. Threading a window is +100, a bullseye through its middle +250, clearing a whole wave +300. Every hit grows your chain; every five hits add x1 to the multiplier, up to x8, and the world gets a new coat of paint at x3 (POP: halftone and comic bursts) and x6 (WET PAINT: paint running down the screen). Stop hitting for 2.5 seconds and it drains.
 
@@ -50,6 +50,8 @@ Then open http://localhost:8080 in desktop Chrome. Any static file server pointe
 | HOT SAUCE | All points +50%, but knocks cost double |
 | TURPENTINE | Tanks and aces lose an armour pip; boss stains +50% |
 
+**The HUD says it in words.** Every level shows its stage, its rule, a WIN pill and a LOSE pill, your ship and Mix-ins, what every target is worth, each control as a key, and PAUSE / SOUND / RESTART. The run card adds a stats grid, your build, a stage-by-stage chart and eight badges to chase.
+
 **Endless Slop.** The six stages loop with a Mix-in draft after every one; each loop flies 10% faster and asks 50% more. Miss one quota and the run is over. The best five runs are kept.
 
 | # | Level | World | The new rule |
@@ -69,8 +71,8 @@ Pick from eight ships, each with its own pilot, hull, stats (speed, handling, go
 
 - `game/index.html` is the page shell. The game is plain scripts in `game/src/`, one job per file, loaded screens and rules first, then the engine:
   - `scenes/`: `scene-flow`, `title`, `how-to-play`, `ship-select`, `level-intro`, `stage-play`, `pause`, `level-results`, `mixin-draft`, `run-complete`, `game-over`
-  - `play/`: `levels`, `mixins`, `run-progress`, `scoring`, `stage-run` (a level and its twist), `controls`, `boss`, `targets`, `items`, `goo-shots`, `ships`, `flight`, `autopilot`
-  - `ui/`: `hud`, `menu-widgets`
+  - `play/`: `levels`, `mixins`, `run-progress`, `run-stats`, `achievements`, `scoring`, `stage-run` (a level and its twist), `controls`, `boss`, `targets`, `items`, `goo-shots`, `ships`, `flight`, `autopilot`
+  - `ui/`: `ui-type` (labels, panels, the navy ground), `keycap-legend`, `win-lose-pills`, `hud-panels`, `route-map`, `stage-chart`, `achievement-badges`, `how-a-run-goes`, `hud`, `menu-widgets`
   - `audio/`: `sound` (synth and music), `announcer` (offline speech)
   - `world/`: `worlds`, `skies`, `corridor`, `gates`
   - `render/`: `projection`, `camera`, `world-render`, `goo-paint`, `effects`, `block-font`

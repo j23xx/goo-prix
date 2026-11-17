@@ -31,7 +31,7 @@ SCENES.select = {
     }
   },
   draw(c) {
-    applyCamera(); renderWorld(c); dim(c, 0.55);
+    applyCamera(); renderWorld(c); groundWash(c, 0.78);
     blockText(c, 'PICK YOUR SHIP', W / 2, 26, 6, { align: 'center', color: YEL, outline: 4, outlineColor: INK, shadow: 8, shadowColor: PNK });
     const cw = 262, ch = 196, gx = W / 2 - (cw * 4 + 18 * 3) / 2, gy = 96;
     for (let k = 0; k < 8; k++) {

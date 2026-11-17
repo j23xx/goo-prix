@@ -30,7 +30,7 @@ function pauseUpdate() {
   else if (id === 'quit') { game.paused = false; MUSIC.duck = 1; goTo('title'); }
 }
 function drawPause(c) {
-  dim(c, 0.7);
+  groundWash(c, 0.86);
   hudText(c, 'PAUSED', W / 2, 150, 10, CREAM, 'center');
   const labels = {
     resume: 'RESUME',
@@ -38,5 +38,7 @@ function drawPause(c) {
     quit: 'QUIT TO TITLE',
   };
   PAUSE_ITEMS.forEach((id, i) => drawButton(c, id, labels[id], W / 2 - 220, 300 + i * 62, 440, 48, game.pauseMenu.i === i));
-  hudText(c, '↑ FLAP   ← → STEER   ↓ DIVE   SPACE SHOOT   X ITEM   R RESTART   M MUTE', W / 2, 520, 2, AQUA, 'center');
+  drawKeyLegend(c, FLIGHT_KEYS, W / 2, 506, 28, 'center');
+  drawKeyLegend(c, [[['R'], 'RESTART'], [['M'], 'SOUND'], [['H'], 'HIDE PANELS'], [['ESC'], 'RESUME']], W / 2, 548, 28, 'center');
+  if (game.run && game.run.mixins.length) { label(c, 'YOUR MIX-INS', W / 2, 596, 15, MAG, { align: 'center' }); drawMixinRow(c, game.run.mixins, W / 2, 640, 34, 'center'); }
 }

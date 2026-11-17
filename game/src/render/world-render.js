@@ -300,8 +300,8 @@ function drawCoat(c) {
   if (!w.coat) { w.onos = []; w.seenHits = w.hits; return; }
   const fade = clamp(w.coatT / 0.4, 0, 1);
   // POP and up: comic halftone at the edges, onomatopoeia bursting out of every hit
-  c.save(); c.globalAlpha = 0.55 * fade;
-  c.drawImage(halftoneLayer(w.coat >= 2 ? '#FF4FD8' : '#FFC21A'), 0, 0);
+  c.save(); c.globalAlpha = 0.38 * fade;
+  c.drawImage(halftoneLayer(w.coat >= 2 ? '#7CFF3A' : '#FFC21A'), 0, 0);
   c.restore();
   w.onos = w.onos || [];
   if (w.hits > (w.seenHits || 0)) {
