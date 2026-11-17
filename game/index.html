@@ -1741,6 +1741,14 @@ function processCrossings(r) {
   }
 }
 
+// After a racer is moved by hand (screenshot poses), point it at the next thing ahead again.
+function syncCrossings(r) {
+  const T = TRACK;
+  r.tBase = Math.floor(r.dist / T.L) * T.L;
+  r.ti = T.things.findIndex((th) => r.tBase + th.s > r.dist);
+  if (r.ti < 0) { r.ti = 0; r.tBase += T.L; }
+}
+
 function crossThing(r, th) {
   const t = world.t;
   switch (th.kind) {
@@ -2697,8 +2705,42 @@ function renderWorld(c) {
   for (const g of w.globs) { const dz = relDz(g.dist); if (dz > CFG.near + 0.5 && dz < CFG.far) list.push({ dz, draw: drawGlob, o: g }); }
   for (const e of w.ents) { const dz = relDz(e.dist); if (dz > CFG.near + 0.5 && dz < CFG.far) list.push({ dz, draw: drawEnt, o: e }); }
   for (const pt of w.parts) { const dz = relDz(pt.dist); if (dz > CFG.near + 0.3 && dz < 120) list.push({ dz, draw: drawPart, o: pt }); }
+  if (!w.attract && w.state !== 'done') {
+    const nb = nextBlocker(p);
+    if (nb) list.push({ dz: nb.dz - 0.05, draw: drawPathMarker, o: nb });
+  }
   list.sort((a, b) => b.dz - a.dz);
   for (const it of list) it.draw(c, it.o, it.dz, it);
+}
+
+// The next wall-like thing the player will cross, and how far ahead it is.
+function nextBlocker(p) {
+  const T = TRACK, n = T.things.length;
+  let idx = p.ti, base = p.tBase;
+  for (let k = 0; k < 12 && n; k++) {
+    const th = T.things[idx];
+    const ahead = base + th.s - p.dist;
+    if (ahead > 150) return null;
+    if (th.kind === 'gate' || th.kind === 'pillars' || th.kind === 'rotor' || th.kind === 'laser' || th.kind === 'blocks' || th.kind === 'ball') {
+      return { th, dz: ahead + CFG.camBack, ahead };
+    }
+    idx++; if (idx >= n) { idx = 0; base += T.L; }
+  }
+  return null;
+}
+// Flight-path marker: where you would cross the next wall if you held your line.
+function drawPathMarker(c, nb, dz) {
+  const p = world.player;
+  if (dz < 6) return;
+  const tArrive = world.t + nb.ahead / Math.max(20, p.speed);
+  const hit = p.ghost <= 0 && thingBlocks(nb.th, p.u, p.v, tArrive) === 'bonk';
+  if (hit && Math.floor(world.t * 8) % 2) return;
+  projectDz(dz, p.u, p.v, PT);
+  const s = clamp(PT.k * 0.55, 7, 18);
+  c.beginPath();
+  c.moveTo(PT.x, PT.y - s); c.lineTo(PT.x + s, PT.y); c.lineTo(PT.x, PT.y + s); c.lineTo(PT.x - s, PT.y); c.closePath();
+  c.lineWidth = 3; c.strokeStyle = hit ? GOO_C : '#fff'; c.stroke();
+  c.fillStyle = hit ? GOO_C : '#fff'; c.fillRect(PT.x - 2, PT.y - 2, 4, 4);
 }
 
 function craftScreen() {
@@ -3013,7 +3055,7 @@ function drawButton(c, id, label, x, y, w, h, selected, opts) {
   uiRect(id, x, y, w, h);
   const o = opts || {};
   if (selected) { c.fillStyle = '#fff'; c.fillRect(x, y, w, h); }
-  else { c.fillStyle = 'rgba(0,0,0,0.75)'; c.fillRect(x, y, w, h); strokeBox(c, x, y, w, h, 2, o.dim ? '#3a3a3a' : '#585858'); }
+  else { c.fillStyle = '#000'; c.fillRect(x, y, w, h); strokeBox(c, x, y, w, h, 2, o.dim ? '#3a3a3a' : '#585858'); }
   const px = o.px || 3;
   blockText(c, label, x + w / 2, y + h / 2 - px * 3.5, px, { align: 'center', color: selected ? '#000' : o.dim ? '#585858' : '#fff' });
   if (selected && o.arrows) {
@@ -3096,18 +3138,17 @@ const SCENES = {
     draw(c) {
       applyCamera();
       renderWorld(c);
-      drawPlayerCraft(c);
-      dim(c, 0.5);
+      dim(c, 0.55);
       // the logo: giant blocks, one goo drip off the second O
       const lx = W / 2, ly = 62, px = 17;
       blockText(c, 'GOO PRIX', lx, ly, px, { align: 'center', color: '#fff', shadow: 8, skew: 0.08 });
       const w0 = textWidth('GOO PRIX', px);
       const ox = lx - w0 / 2 + 2 * 6 * px + 2.5 * px - 7 * px * 0.08 * 0;
-      const drip = 10 + 26 * (0.5 + 0.5 * Math.sin(game.sceneT * 1.6));
+      const drip = 8 + 14 * (0.5 + 0.5 * Math.sin(game.sceneT * 1.6));
       c.fillStyle = GOO_C;
       c.fillRect(ox - px * 0.6, ly + 7 * px - 2, px * 1.2, drip);
       c.beginPath(); c.arc(ox, ly + 7 * px + drip, px * 0.75, 0, TAU); c.fill();
-      blockText(c, 'A FLAP-AND-SPLAT GRAND PRIX', lx, ly + 7 * px + 30, 3, { align: 'center', color: '#c8c8c8' });
+      blockText(c, 'A FLAP-AND-SPLAT GRAND PRIX', lx, ly + 7 * px + 42, 3, { align: 'center', color: '#c8c8c8' });
       const labels = {
         start: game.mirror || save.unlockedMirror ? 'START CUP' : 'START CUP',
         quick: 'QUICK RACE',
@@ -3119,11 +3160,11 @@ const SCENES = {
       TITLE_ITEMS.forEach((id, i) => drawButton(c, id, labels[id], bx, 300 + i * 56, bw, bh, game.menu.i === i, { arrows: id === 'diff' || id === 'scheme' }));
       // best line and trophies
       const best = save.bestCup ? 'BEST CUP ' + save.bestCup.toLocaleString('en-US') : 'NO CUP WON YET';
-      blockText(c, best, W / 2, 594, 3, { align: 'center', color: '#fff' });
-      let tx = W / 2 - 3 * 40;
+      blockText(c, best, W / 2, 590, 3, { align: 'center', color: '#fff' });
+      let tx = W / 2 - 2.5 * 48;
       for (const cupName of ['gloop', 'regloop']) for (let d = 0; d < 3; d++) {
         const tr = save.trophies[cupName + ':' + d];
-        drawTrophy(c, tx, 628, 26, tr ? 4 - tr : 0);
+        drawTrophy(c, tx, 642, 26, tr ? 4 - tr : 0);
         tx += 48;
       }
       blockText(c, 'SPACE FLAP   A/D STEER   S DIVE   CLICK/F GOO   E ITEM   ESC PAUSE', W / 2, 690, 2, { align: 'center', color: '#585858' });
@@ -3501,7 +3542,7 @@ function drawGameOver(c, t) {
   drawRacerArt(c, RACERS[game.racer], x, y - 40 + Math.sin(t * 2) * 4, 120, { color: '#fff', goo: true, t });
   c.fillStyle = '#000'; c.fillRect(x - 130, y, 260, 120);
   strokeBox(c, x - 130, y, 260, 120, 5, '#fff');
-  c.save(); c.translate(x - 130, y); c.rotate(-0.25); c.fillStyle = '#fff'; c.fillRect(-10, -16, 280, 12); c.restore();
+  c.save(); c.translate(x - 130, y); c.rotate(-1.25); c.fillStyle = '#fff'; c.fillRect(0, -6, 280, 12); c.restore();   // the lid, flung open
   for (let i = 0; i < 4; i++) { c.fillStyle = '#585858'; c.fillRect(x - 100 + i * 60, y + 20, 8, 80); }
   gooSplat(c, x + 70, y + 30, 26, 17, 0.9);
   drawButton(c, 'retry', 'RETRY CUP', W / 2 - 250, 600, 240, 50, game.goMenu.i === 0);
@@ -3626,6 +3667,7 @@ function poseRace() {
   world.ents = [];
   world.wind = [];
   world.barks = [];
+  for (const r of world.racers) syncCrossings(r);
   updatePlaces();
   world.lastPlace = p.place;
   world.camU = p.u - 0.5; world.camV = p.v + CFG.camUp - 0.25; world.camRoll = -0.045; world.camF = 720; world.camHz = CFG.horizon + 6;
@@ -3677,6 +3719,9 @@ function runShot(name) {
   if (name === 'race') poseRace();
   else if (name === 'results') poseResults();
   else if (name === 'podium') posePodium();
+  else if (name === 'howto') { enterScene('title'); simulate(3); enterScene('howto'); }
+  else if (name === 'select') { enterScene('title'); simulate(3); game.cupMode = 'cup'; enterScene('select'); game.racer = 7; game.sceneT = 0.6; }
+  else if (name === 'gameover') { game.racer = 5; enterScene('gameover'); game.sceneT = 1; }
   else { enterScene('title'); simulate(7); game.menu.i = 0; game.sceneT = 1.2; }
   render();
 }
