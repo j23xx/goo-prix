@@ -30,9 +30,19 @@ function drawTiles(c, gr, t) {
   const beat = Math.floor(t * TRACK.def.song.bpm / 60);
   for (let i = last; i >= first; i--) {
     const dzA = i * tile - s0, dzB = dzA + tile;
-    c.fillStyle = col(gr.kind === 'waffle' ? gr.b : gr.base, dzA);
+    c.fillStyle = col(gr.kind === 'waffle' || gr.kind === 'tiles' ? gr.b : gr.base, dzA);
     c.beginPath(); floorQuad(c, dzA, dzB, -hw, hw, 0); c.fill();
-    if (gr.kind === 'waffle') {
+    if (gr.kind === 'tiles') {
+      // polished white showroom tiles with grey grout and the spotlights' sheen sliding over them
+      c.fillStyle = col(gr.a, dzA);
+      c.beginPath();
+      for (let j = 0; j < 6; j++) floorQuad(c, dzA + 0.12, dzB - 0.12, -hw + j * 4 + 0.12, -hw + j * 4 + 3.88, 0.01);
+      c.fill();
+      if (dzA < 60 && i % 3 === 0) {
+        c.fillStyle = 'rgba(127,242,255,0.25)';
+        c.beginPath(); floorQuad(c, dzA + 0.5, dzB - 0.5, -hw + wrap(i * 7, 20), -hw + wrap(i * 7, 20) + 2.5, 0.02); c.fill();
+      }
+    } else if (gr.kind === 'waffle') {
       c.fillStyle = col(gr.a, dzA);
       c.beginPath();
       for (let j = 0; j < 6; j++) if ((i + j) & 1) floorQuad(c, dzA + 0.4, dzB - 0.4, -hw + j * 4 + 0.4, -hw + j * 4 + 3.6, 0.01);
@@ -119,7 +129,7 @@ function drawCorridor(c, T) {
   const gr = th.ground;
   if (gr.sea) drawJamWaves(c, gr.sea, t);
   if (gr.kind === 'ice') drawIce(c, gr);
-  if (gr.kind === 'waffle' || gr.kind === 'dance') drawTiles(c, gr, t);
+  if (gr.kind === 'waffle' || gr.kind === 'dance' || gr.kind === 'tiles') drawTiles(c, gr, t);
   if (th.walls) drawBrickWalls(c, th.walls, t);
   // rails along the floor and ceiling edges, one path per distance band, styled per world
   const rail = th.rail, floorP = bandPaths(), ceilP = bandPaths();
@@ -352,6 +362,28 @@ function drawProp(c, pr, dz) {
     case 'can': {
       c.beginPath(); c.roundRect(-s * 0.25, -s * 0.7, s * 0.5, s * 0.7, s * 0.08); c.fillStyle = f('#D9DDEA'); c.fill(); c.stroke();
       c.fillStyle = f(MAG); c.fillRect(-s * 0.25, -s * 0.5, s * 0.5, s * 0.25);
+      break;
+    }
+    case 'bottle': { // a giant spray bottle of cleaner on display
+      c.beginPath(); c.roundRect(-s * 0.28, -s * 0.85, s * 0.56, s * 0.85, s * 0.1); c.fillStyle = f('#E8F7FF'); c.fill(); c.stroke();
+      c.fillStyle = f('#19E0D0'); c.fillRect(-s * 0.22, -s * 0.5, s * 0.44, s * 0.42);
+      c.beginPath(); c.roundRect(-s * 0.18, -s * 1.15, s * 0.36, s * 0.32, s * 0.05); c.fillStyle = f(RED); c.fill(); c.stroke();
+      c.beginPath(); c.moveTo(s * 0.18, -s * 1.08); c.lineTo(s * 0.42, -s * 1.02); c.lineTo(s * 0.18, -s * 0.94); c.fillStyle = f(RED); c.fill(); c.stroke();
+      c.fillStyle = 'rgba(255,255,255,0.75)'; c.fillRect(-s * 0.2, -s * 0.8, s * 0.07, s * 0.6);
+      break;
+    }
+    case 'bucket': { // a mop bucket with the mop standing in it
+      c.beginPath(); c.moveTo(-s * 0.1, -s * 0.5); c.lineTo(s * 0.25, -s * 1.5); c.lineWidth = lw * 2.4; c.strokeStyle = INK; c.stroke(); c.lineWidth = lw * 1.4; c.strokeStyle = f('#E8C88A'); c.stroke();
+      c.lineWidth = lw; c.strokeStyle = INK;
+      c.beginPath(); c.moveTo(-s * 0.42, -s * 0.6); c.lineTo(s * 0.42, -s * 0.6); c.lineTo(s * 0.32, 0); c.lineTo(-s * 0.32, 0); c.closePath(); c.fillStyle = f('#FFC21A'); c.fill(); c.stroke();
+      c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(-s * 0.3, -s * 0.52, s * 0.08, s * 0.44);
+      break;
+    }
+    case 'plinth': { // a white display plinth under a cone of light, with a chrome egg on top
+      c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.moveTo(-s * 0.1, -s * 2.4); c.lineTo(s * 0.1, -s * 2.4); c.lineTo(s * 0.5, -s * 0.5); c.lineTo(-s * 0.5, -s * 0.5); c.fill();
+      c.beginPath(); c.rect(-s * 0.35, -s * 0.5, s * 0.7, s * 0.5); c.fillStyle = f('#FFFFFF'); c.fill(); c.stroke();
+      const eg = c.createLinearGradient(0, -s * 1.0, 0, -s * 0.5); eg.addColorStop(0, '#FFFFFF'); eg.addColorStop(0.5, '#7C8698'); eg.addColorStop(1, '#D7DDE6');
+      c.beginPath(); c.ellipse(0, -s * 0.75, s * 0.18, s * 0.25, 0, 0, TAU); c.fillStyle = eg; c.fill(); c.stroke();
       break;
     }
     case 'bag': {

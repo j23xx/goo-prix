@@ -41,7 +41,7 @@ function drawThing(c, th, dz, item) {
 }
 
 function drawDecals(c, S, th) {
-  for (const d of th.decals) gooSplat(c, sx(S, d.u, d.v), sy(S, d.u, d.v), d.r * S.k, d.seed, 0.95);
+  for (const d of th.decals) gooSplat(c, sx(S, d.u, d.v), sy(S, d.u, d.v), d.r * S.k, d.seed, 0.95, world.t - (d.t0 || 0));
 }
 // Fill the current path in a colour with an ink keyline round it: reads on any background.
 function inked(c, fill, lw) {
@@ -157,8 +157,22 @@ function drawGate(c, g, dz, solid) {
   if (solid) { c.fillStyle = col(gt.fill, dz, gt.alpha); c.fill('evenodd'); }
   c.lineWidth = Math.max(1.5, S.k * (solid ? 0.45 : 0.15)); c.strokeStyle = col(gt.edge, dz); c.stroke();
   if (solid && dz < 170) slabPattern(c, S, g, dz, u0, v0, u1, v1);
+  // White-Out: in a blizzard the whole slab frosts over, window and all, until goo melts a peek
+  const frost = (world.blizz || 0) * (g.decals.length ? 0.25 : 1);
+  if (frost < 0.6) icingRim(c, S, g, dz, u0, v0, u1, v1, g === world.nextTh);
+  if (frost > 0.02) {
+    c.beginPath(); slabRect(c, S, -hw, 0, hw, ch);
+    c.fillStyle = 'rgba(236,250,255,' + (frost * 0.9).toFixed(3) + ')'; c.fill();
+    if (dz < 140) {
+      c.save(); c.clip(); c.globalAlpha = frost * 0.7;
+      c.strokeStyle = '#FFFFFF'; c.lineWidth = Math.max(1, S.k * 0.12);
+      const r = mulberry32(Math.floor(g.s * 5) + 3);
+      c.beginPath();
+      for (let k = 0; k < 9; k++) { const u = r() * 24 - 12, v = r() * 14, l = 1 + r() * 2; for (let a = 0; a < 3; a++) { const an = a * Math.PI / 3; c.moveTo(sx(S, u - Math.cos(an) * l, v - Math.sin(an) * l), sy(S, u - Math.cos(an) * l, v - Math.sin(an) * l)); c.lineTo(sx(S, u + Math.cos(an) * l, v + Math.sin(an) * l), sy(S, u + Math.cos(an) * l, v + Math.sin(an) * l)); } }
+      c.stroke(); c.restore();
+    }
+  }
   drawDecals(c, S, g);
-  icingRim(c, S, g, dz, u0, v0, u1, v1, g === world.nextTh);
   if (solid) {
     // drop-line from the sill to the floor so the height reads at a glance
     c.beginPath();

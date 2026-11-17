@@ -55,7 +55,12 @@ function drawPart(c, p, dz) {
   const s = Math.max(1.5, PT.k * p.size);
   const a = clamp(p.life / 0.4, 0, 1);
   c.globalAlpha = a;
-  if (p.kind === 'goo') { c.fillStyle = GOO_C; c.fillRect(PT.x - s / 2, PT.y - s / 2, s, s); }
+  if (p.kind === 'goo') {
+    // a wet droplet: a dark rim, the lime body and a pin of light
+    c.fillStyle = '#3DA516'; c.beginPath(); c.arc(PT.x, PT.y, s * 0.6, 0, TAU); c.fill();
+    c.fillStyle = GOO_C; c.beginPath(); c.arc(PT.x - s * 0.08, PT.y - s * 0.08, s * 0.48, 0, TAU); c.fill();
+    if (s > 4) { c.fillStyle = '#F2FFE0'; c.beginPath(); c.arc(PT.x - s * 0.2, PT.y - s * 0.22, s * 0.14, 0, TAU); c.fill(); }
+  }
   else if (p.kind === 'shard') {
     c.save(); c.translate(PT.x, PT.y); c.rotate(p.spin);
     c.fillStyle = INK; c.fillRect(-s - 1, -s * 0.4 - 1, s * 2 + 2, s * 0.8 + 2);
@@ -71,7 +76,7 @@ function popup(text, size) {
   world.popups.push({ text, size, t: 0, max: size === 'big' ? 1.1 : 0.9 });
 }
 function worldPopup(text, dist, u, v) { world.popups.push({ text, size: 'small', t: 0, max: 0.9, world: true, dist, u, v }); }
-function bark(r, text) { world.barks.push({ r, text, t: 0 }); }
+function bark(r, text, tg) { world.barks = world.barks.filter((b) => b.tg !== tg || !tg); world.barks.push({ r, text, t: 0, tg }); }
 function shake(px) { world.shake = Math.max(world.shake, px); }
 function windscreenGoo(n) {
   for (let i = 0; i < n; i++) {
@@ -79,11 +84,4 @@ function windscreenGoo(n) {
     world.wind.push({ x: W / 2 + side * rnd(180, 520), y: rnd(150, 470), r: rnd(40, 75), seed: rndInt(1, 9999), t: 0, max: 2, vy: rnd(5, 20) });
   }
   if (world.wind.length > 4) world.wind.splice(0, world.wind.length - 4);
-}
-// Splat Score, kept per category so the results screen can break it down line by line.
-function addScore(r, n, cat) {
-  if (!r.isPlayer) return;
-  world.score += n;
-  const k = cat || 'stunt';
-  world.scoreBy[k] = (world.scoreBy[k] || 0) + n;
 }

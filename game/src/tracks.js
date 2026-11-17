@@ -41,6 +41,12 @@ const TRACKS = [
     beats: { GATE: 6, DOUBLE: 1, PILLARS: 2, RING_LINE: 2, CUBE_ROW: 2, BALL_ARC: 2, BLOCKS: 1, HAZARD: 3, BREATHER: 1 },
     song: makeSong(505, 150, 50, 'minor', 'four'),
   },
+  {
+    name: 'THE SHOWROOM', motif: 'showroom', seed: 606, len: 1600, win: [8, 5.5], spacing: 60, empty: true,
+    curves: [[10, 2, 0.3]], hills: [[1, 2, 0]], slide: 0,
+    hazards: [], tip: 'MAKE HIM FILTHY.', beats: { BREATHER: 1 },
+    song: makeSong(606, 156, 52, 'phryg', 'four'),
+  },
 ];
 
 // Each world's look: sky, ground, walls, rails, ribs, gate slab and props, and the colour distance
@@ -92,6 +98,15 @@ const THEMES = [
     gate: { fill: '#0FA3A3', alpha: 0.95, hatch: 'ridges', ink: '#086E6E', edge: '#065050' },
     props: { kinds: ['tv', 'cone', 'pizza', 'can', 'bag'], every: [9, 20], u: [15, 40], float: true, size: [3, 7] },
   },
+  {
+    id: 'showroom', name: 'THE SHOWROOM', fog: '#EEF2F7', fogAmt: 0.55,
+    tip: 'A WHITE-TILE SHOWROOM WHERE NOTHING HAS EVER BEEN DIRTY. YET.',
+    sky: { stops: ['#C9D2DE', '#EEF2F7', '#FFFFFF'], below: '#DCE3EC', spots: true },
+    ground: { kind: 'tiles', a: '#FFFFFF', b: '#DCE3EC', grout: '#9AA6B8' },
+    rail: { style: 'chrome', a: '#D9DDEA', glint: '#7FF2FF' }, ribs: { color: '#FFFFFF', every: 36, shape: 'octagon' },
+    gate: { fill: '#2F3A4F', alpha: 0.96, hatch: 'ridges', ink: '#1A2232', edge: '#11151F' },
+    props: { kinds: ['bottle', 'bucket', 'plinth'], every: [12, 22], u: [16, 40], float: false, size: [5, 10] },
+  },
 ];
 TRACKS.forEach((t, i) => { t.theme = THEMES[i]; t.name = THEMES[i].name; t.tip = THEMES[i].tip; });
 
@@ -139,7 +154,7 @@ function buildTrack(index, opts) {
   let s = 160;
   let n = 0;
   const table = Object.entries(def.beats);
-  while (s < L - 110) {
+  while (!def.empty && s < L - 110) {
     let beat = n < 2 ? 'GATE' : weightedWith(rng, table);
     n++;
     switch (beat) {

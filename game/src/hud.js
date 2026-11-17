@@ -2,7 +2,7 @@
 'use strict';
 
 // ============================================================================================
-// HUD — the Pong scoreboard (position | lap), progress strip, timer, item, goo tank, boost, mirror
+// HUD — the score up top, multiplier and chain, quota strip, level clock, item, goo tank, boost
 // ============================================================================================
 function fmtTime(t) {
   if (!(t >= 0)) t = 0;
@@ -78,91 +78,81 @@ function plate(c, x, y, w, h, border) {
     }
   }
 }
-// The position numeral wears its medal: gold, silver, bronze, then cream.
-function rankColor(place) { return ['#FFC21A', '#D9DDEA', '#FF8A3D'][place] || CREAM; }
 // HUD lettering: block font with an ink keyline and a hard ink drop shadow.
 function hudText(c, text, x, y, px, color, align) {
   return blockText(c, text, x, y, px, { align: align || 'left', color, outline: Math.max(1.5, px * 0.5), outlineColor: INK, shadow: Math.max(2, px * 0.7), shadowColor: INK });
 }
+function fmtScore(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 
 function drawHUD(c) {
-  const w = world, p = w.player, T = TRACK;
-  const raceLen = CFG.laps * T.L;
-  const pos = p.place + 1;
-  const lap = Math.min(CFG.laps, Math.floor(Math.max(0, p.dist) / T.L) + 1);
-  // ---- the scoreboard: POS | LAP in giant Pong numerals with a dashed net between them
-  plate(c, W / 2 - 236, 10, 472, 196);
-  hudText(c, String(pos), W / 2 - 52, 20, 16, rankColor(p.place), 'right');
-  hudText(c, ORD[p.place].slice(1), W / 2 - 46, 22, 3, rankColor(p.place));
-  hudText(c, '/8', W / 2 - 46, 50, 3, CREAM);
-  hudText(c, String(lap), W / 2 + 52, 20, 16, CREAM);
-  hudText(c, '/' + CFG.laps, W / 2 + 52 + 86, 22, 3, CREAM);
-  c.fillStyle = CREAM;
-  for (let y = 18; y < 134; y += 16) c.fillRect(W / 2 - 3, y, 6, 9);
-  hudText(c, 'POS', W / 2 - 52, 140, 2, CYN, 'right');
-  hudText(c, 'LAP', W / 2 + 52, 140, 2, CYN);
-  // progress strip: everyone's place along the whole race, you tallest
-  const sx0 = W / 2 - 210, sw = 420, sy0 = 166;
-  const finalLap = lap === CFG.laps && !p.finished;
-  const blinkOn = !finalLap || Math.floor(w.t * 4) % 2 === 0;
-  c.fillStyle = blinkOn ? WHT : PNK;
-  c.fillRect(sx0, sy0, sw, 2);
-  for (let k = 1; k < CFG.laps; k++) for (let y = -8; y < 10; y += 6) c.fillRect(sx0 + sw * k / CFG.laps - 1, sy0 + y, 2, 3);
-  c.fillRect(sx0 + sw - 2, sy0 - 8, 4, 18);
-  for (const r of w.racers) {
-    if (r === p) continue;
-    const x = sx0 + clamp(r.dist / raceLen, 0, 1) * sw;
-    c.fillStyle = INK; c.fillRect(x - 3, sy0 - 7, 6, 16);
-    c.fillStyle = r.def.color; c.fillRect(x - 2, sy0 - 6, 4, 14);
-  }
-  const px1 = sx0 + clamp(p.dist / raceLen, 0, 1) * sw;
-  c.fillStyle = INK; c.fillRect(px1 - 4, sy0 - 13, 8, 28);
-  c.fillStyle = YEL; c.fillRect(px1 - 3, sy0 - 12, 6, 26);
-  const cup = game.cup;
-  const what = (cup && cup.mode === 'cup' ? 'RACE ' + (cup.race + 1) + '/5 · ' : '') + T.def.name + (cup && cup.mode === 'cup' ? ' · TOP 5 ADVANCE' : '');
-  hudText(c, what, W / 2, 184, 2, CYN, 'center');
-  // ---- top left: time and score
-  plate(c, 16, 14, 250, 112);
-  hudText(c, fmtTime(raceTime()), 30, 26, 5, WHT);
-  hudText(c, 'SCORE', 30, 74, 2, CYN);
-  hudText(c, String(w.score), 30, 92, 4, YEL);
-  // ---- top right: coins and retry tokens
-  const inCup = game.cup && game.cup.mode === 'cup';
-  plate(c, W - 206, 14, 190, inCup ? 132 : 76);
-  c.fillStyle = INK; c.fillRect(W - 194, 26, 30, 30);
-  c.fillStyle = YEL; c.fillRect(W - 191, 29, 24, 24);
-  hudText(c, 'x' + p.coins, W - 30, 26, 5, WHT, 'right');
-  hudText(c, 'COINS', W - 30, 66, 2, CYN, 'right');
-  if (inCup) {
-    for (let i = 0; i < CFG.tokens; i++) {
-      const x = W - 50 - i * 34, y = 98;
-      const on = i < game.cup.tokens;
-      c.lineCap = 'square';
-      for (const [lw2, colr] of [[7, INK], [4, on ? WHT : '#4A4A55']]) {
-        c.strokeStyle = colr; c.lineWidth = lw2;
-        c.beginPath(); c.moveTo(x - 9, y + 16); c.lineTo(x + 5, y + 2); c.stroke();
-        c.beginPath(); c.arc(x + 8, y - 1, 7, Math.PI * 0.75, Math.PI * 2.25); c.stroke();
-      }
-    }
-    hudText(c, 'RETRIES', W - 30, 124, 2, CYN, 'right');
-  }
-  // ---- left edge: the race order, top 3 and you, the player highlighted
-  const lx = 30, ly = 150;
-  const rows = w.order.slice(0, 3);
-  if (p.place > 2) rows.push(p);
-  plate(c, 16, ly - 12, 200, 40 + rows.length * 30 + (p.place > 2 ? 12 : 0));
-  hudText(c, 'ORDER', lx, ly, 2, CYN);
-  rows.forEach((r, k) => {
-    const y = ly + 26 + k * 30 + (k === 3 ? 12 : 0);
-    const me = r === p;
-    const label = (r.place + 1) + ' ' + (me ? 'YOU' : r.def.name.split(' ').pop());
-    if (me) { c.fillStyle = YEL; c.fillRect(lx - 6, y - 6, 172, 26); blockText(c, label, lx, y, 2, { color: INK }); }
-    else {
-      c.fillStyle = r.def.color; c.fillRect(lx - 6, y - 4, 4, 18);
-      hudText(c, label, lx, y, 2, r.goop > 0 ? GOO_C : WHT);
-    }
+  const w = world, p = w.player, L = w.level;
+  // ---- top centre: the score, what it just did, and the quota (or the boss's FILTH bar)
+  plate(c, W / 2 - 250, 10, 500, 150);
+  w.shownScore = w.shownScore == null ? w.score : damp(w.shownScore, w.score, 12, DT);
+  const sc = Math.round(w.shownScore);
+  const bump = w.deltas.length && w.deltas[w.deltas.length - 1].t < 0.15 ? 1.08 : 1;
+  c.save(); c.translate(W / 2 - 40, 46); c.scale(bump, bump);
+  hudText(c, fmtScore(sc), 0, -24, 7, YEL, 'center');
+  c.restore();
+  w.deltas.slice(-3).forEach((d, k) => {
+    const a = clamp((1.6 - d.t) / 0.4, 0, 1);
+    blockText(c, d.text, W / 2 + 232, 24 + k * 16 - d.t * 8, 2, { align: 'right', color: d.good ? GOO_C : RED, outline: 1.5, outlineColor: INK, alpha: a });
   });
-  if (p.place > 3) hudText(c, '...', lx, ly + 26 + 3 * 30 - 8, 2, WHT);
+  const bx = W / 2 - 220, bw = 440, by = 100;
+  if (w.boss) {
+    const b = w.boss;
+    hudText(c, 'FILTH', bx, by - 22, 2, GOO_C);
+    hudText(c, 'PHASE ' + b.phase + '/3', bx + bw, by - 22, 2, CREAM, 'right');
+    c.fillStyle = INK; c.fillRect(bx - 3, by - 3, bw + 6, 26);
+    const g = c.createLinearGradient(bx, 0, bx + bw, 0);
+    g.addColorStop(0, '#3DA516'); g.addColorStop(0.6, GOO_C); g.addColorStop(1, '#DAFFB0');
+    c.fillStyle = g; c.fillRect(bx, by, bw * b.filth / 100, 20);
+    for (const m of [40, 75]) { c.fillStyle = WHT; c.fillRect(bx + bw * m / 100 - 1, by - 6, 3, 32); }
+    const wiping = b.turrets.every((tr) => tr.hp > 0);
+    hudText(c, wiping ? 'JAM A TURRET TO STOP THE SQUEEGEE' : 'SQUEEGEE JAMMED!', W / 2, by + 30, 2, wiping ? CYN : YEL, 'center');
+  } else {
+    const q = w.quota, f = clamp(w.score / Math.max(1, q), 0, 3);
+    const passed = w.score >= q;
+    hudText(c, passed ? 'QUOTA SMASHED' : 'QUOTA ' + fmtScore(q), bx, by - 22, 2, passed ? GOO_C : CYN);
+    const gr = gradeFor(w.score / Math.max(1, q));
+    hudText(c, gr === 'D' ? '' : 'RANK ' + gr, bx + bw, by - 22, 2, GRADE_COLORS[gr], 'right');
+    c.fillStyle = INK; c.fillRect(bx - 3, by - 3, bw + 6, 20);
+    // the bar fills to the quota at its middle, and keeps going toward an S at the far end
+    const k = f <= 1 ? f * 0.5 : 0.5 + (f - 1) / 2 * 0.5;
+    c.fillStyle = passed ? GOO_C : YEL; c.fillRect(bx, by, bw * k, 14);
+    for (const [m, lab] of [[1, 'C'], [1.6, 'B'], [2.2, 'A'], [3, 'S']]) {
+      const xx = bx + bw * (m <= 1 ? m * 0.5 : 0.5 + (m - 1) / 2 * 0.5);
+      c.fillStyle = WHT; c.fillRect(xx - 1, by - 5, 3, 24);
+      blockText(c, lab, xx - 4, by + 21, 1.5, { color: GRADE_COLORS[lab] });
+    }
+    // how far through the level you are, with your ship on it
+    const prog = clamp(p.dist / w.length, 0, 1), py0 = by + 40;
+    c.fillStyle = 'rgba(255,246,224,0.45)'; c.fillRect(bx, py0, bw, 2);
+    c.fillStyle = YEL; c.fillRect(bx + bw * prog - 3, py0 - 5, 6, 12);
+  }
+  // ---- top left: the multiplier, the chain draining away, and the coat of paint it buys
+  plate(c, 16, 14, 230, 130, w.mult >= 6 ? MAG : w.mult >= 3 ? YEL : null);
+  const mcol = w.mult >= 6 ? MAG : w.mult >= 3 ? YEL : CREAM;
+  const pulse = w.chainT > 0 ? 1 + 0.05 * Math.sin(w.t * 12) : 1;
+  c.save(); c.translate(32, 26); c.scale(pulse, pulse);
+  hudText(c, 'x' + w.mult, 0, 0, 8, mcol);
+  c.restore();
+  hudText(c, 'CHAIN ' + w.chain, 150, 30, 2, WHT);
+  hudText(c, COAT_NAMES[w.coat], 150, 52, 2, w.coat === 2 ? MAG : w.coat === 1 ? YEL : CYN);
+  c.fillStyle = INK; c.fillRect(30, 100, 200, 14);
+  c.fillStyle = mcol; c.fillRect(32, 102, 196 * clamp(w.chainT / 2.5, 0, 1), 10);
+  hudText(c, 'HIT AGAIN TO KEEP IT', 30, 120, 1.5, CYN);
+  // ---- top right: which level, the clock, knocks taken and continues left
+  plate(c, W - 246, 14, 230, 130);
+  const run = game.run;
+  hudText(c, (L.boss ? 'FINAL' : 'LEVEL ' + (w.levelIdx + 1) + '/5'), W - 30, 26, 2, CYN, 'right');
+  const tLeft = w.boss ? w.boss.time : Math.max(0, (w.length - p.dist) / Math.max(1, levelSpeed(L)));
+  const low = tLeft < 10 && Math.floor(w.t * 4) % 2 === 0;
+  const ts = Math.ceil(tLeft);
+  hudText(c, Math.floor(ts / 60) + ':' + String(ts % 60).padStart(2, '0'), W - 30, 46, 6, low ? RED : WHT, 'right');
+  hudText(c, 'KNOCKS ' + w.knocks, W - 30, 100, 2, w.knocks ? RED : GOO_C, 'right');
+  if (run && run.mode === 'campaign') hudText(c, 'CONTINUES ' + run.continues, W - 30, 120, 2, CREAM, 'right');
+  else hudText(c, 'PRACTICE', W - 30, 120, 2, CREAM, 'right');
   // ---- bottom left: item slot and goo tank
   const ix = 30, iy = H - 122, isz = 86;
   plate(c, 16, iy - 32, 160, isz + 62);
@@ -175,58 +165,43 @@ function drawHUD(c) {
     drawItemIcon(c, p.item, ix + isz / 2, iy + isz / 2, isz * 0.8);
     hudText(c, ITEMS[p.item].name, ix, iy - 22, 2, YEL);
   } else hudText(c, 'ITEM', ix, iy - 22, 2, CYN);
+  if (p.autogun > 0) hudText(c, 'AUTO ' + p.autogun.toFixed(1), ix + isz / 2, iy + isz / 2 - 6, 2, GOO_C, 'center');
   hudText(c, 'X', ix + isz / 2, iy + isz + 8, 2, CYN, 'center');
   const tx = ix + isz + 16, th = isz, tw = 24;
   c.fillStyle = INK; c.fillRect(tx, iy, tw, th);
   const fill = (p.tank / CFG.tank) * (th - 8);
   c.fillStyle = p.geyser > 0 && Math.floor(w.t * 10) % 2 ? WHT : GOO_C;
   c.fillRect(tx + 4, iy + th - 4 - fill, tw - 8, fill);
-  strokeBox(c, tx, iy, tw, th, 3, WHT);
+  strokeBox(c, tx, iy, tw, th, 3, p.tank < CFG.shotCost ? RED : WHT);
   hudText(c, 'GOO', tx + tw / 2, iy + isz + 8, 2, CYN, 'center');
-  // ---- bottom right: boost meter (dive charge) and speed
-  const bx = W - 30 - 10 * 22, by = H - 66;
-  plate(c, bx - 16, by - 76, 10 * 22 + 30, 122);
-  const charge = p.boostT > 0 ? 1 : clamp(p.diveT / CFG.swoopTiers[1][0], 0, 1);
-  const lit = Math.round(charge * 10);
-  for (let i = 0; i < 10; i++) {
-    const on = i < lit;
-    const tierMark = i === Math.round(CFG.swoopTiers[0][0] / CFG.swoopTiers[1][0] * 10) - 1 || i === 9;
-    c.fillStyle = on ? (p.boostT > 0 ? (Math.floor(w.t * 16) % 2 ? ORG : YEL) : CYN) : '#22222C';
-    c.fillRect(bx + i * 22, by, 18, 26);
-    if (tierMark) { c.fillStyle = WHT; c.fillRect(bx + i * 22, by + 30, 18, 3); }
+  // ---- bottom right: boost meter (dive charge), or the lock pips in zero-G
+  const bx2 = W - 30 - 10 * 22, by2 = H - 66;
+  plate(c, bx2 - 16, by2 - 76, 10 * 22 + 30, 122);
+  if (L.twist === 'zerog') {
+    for (let i = 0; i < 6; i++) {
+      const on = i < w.locks.length;
+      c.fillStyle = INK; c.fillRect(bx2 + i * 37 - 2, by2 - 2, 32, 30);
+      c.fillStyle = on ? (i % 2 ? YEL : RED) : '#22222C'; c.fillRect(bx2 + i * 37, by2, 28, 26);
+    }
+    hudText(c, w.locks.length ? 'LOCKS ' + w.locks.length + ' · LET GO!' : 'HOLD SPACE: LOCK', bx2, by2 - 20, 2, w.locks.length ? YEL : CYN);
+  } else {
+    const charge = p.boostT > 0 ? 1 : clamp(p.diveT / CFG.swoopTiers[1][0], 0, 1);
+    const lit = Math.round(charge * 10);
+    for (let i = 0; i < 10; i++) {
+      const on = i < lit;
+      c.fillStyle = on ? (p.boostT > 0 ? (Math.floor(w.t * 16) % 2 ? ORG : YEL) : CYN) : '#22222C';
+      c.fillRect(bx2 + i * 22, by2, 18, 26);
+    }
+    hudText(c, p.boostT > 0 ? 'BOOST!' : p.diveT > 0.1 ? 'CHARGE' : L.twist === 'rhythm' ? 'FIRE ON THE BEAT' : 'DIVE TO CHARGE', bx2, by2 - 20, 2, p.boostT > 0 ? ORG : L.twist === 'rhythm' ? MAG : CYN);
   }
-  hudText(c, p.boostT > 0 ? 'BOOST!' : p.diveT > 0.1 ? 'CHARGE' : 'SWOOP', bx, by - 20, 2, p.boostT > 0 ? ORG : CYN);
-  hudText(c, Math.round(p.speed * 3.6) + ' GPH', W - 30, by - 64, 4, WHT, 'right');
-  // ---- bottom centre: the rear-view mirror strip
-  const mx = W / 2 - 180, my = H - 54, mw = 360, mh = 40;
-  c.fillStyle = 'rgba(11,11,18,0.85)'; c.fillRect(mx, my, mw, mh);
-  strokeBox(c, mx, my, mw, mh, 2, CYN);
-  hudText(c, 'REAR VIEW', mx + 6, my - 18, 2, CYN);
-  c.save(); c.beginPath(); c.rect(mx + 2, my + 2, mw - 4, mh - 4); c.clip();
-  for (const r of w.racers) {
-    if (r === p) continue;
-    const back = gap(r.dist, p.dist);
-    if (back < 0 || back > 80) continue;
-    const near01 = 1 - back / 80;
-    const px = 1 + Math.round(near01 * 3);
-    blockText(c, String(r.idx + 1), mx + mw / 2 + clamp(r.u - p.u, -12, 12) * 13, my + mh / 2 - px * 3.5, px, { align: 'center', color: r.def.color });
-  }
-  c.fillStyle = GOO_C;
-  for (const g of w.globs) {
-    if (g.owner === p) continue;
-    const back = gap(g.dist, p.dist);
-    if (back < 0 || back > 80) continue;
-    c.fillRect(mx + mw / 2 + clamp(g.u - p.u, -12, 12) * 13 - 3, my + mh / 2 - 3, 6, 6);
-  }
-  for (const e of w.ents) if (e.kind === 'sock' && gap(e.dist, p.dist) > 0 && gap(e.dist, p.dist) < 80) { c.fillStyle = PNK; c.fillRect(mx + mw / 2 + clamp(e.u - p.u, -12, 12) * 13 - 5, my + 8, 10, 10); }
-  c.restore();
-  // ---- incoming warning chevron at the screen edge (pink: it hurts)
+  hudText(c, Math.round(p.speed * 3.6) + ' GPH', W - 30, by2 - 64, 4, WHT, 'right');
+  // ---- incoming warning chevron at the screen edge
   if (w.incoming && Math.floor(w.t * 10) % 2 === 0) {
-    const ex = w.warnSide < 0 ? 70 : W - 70;
+    const ex = w.warnSide < 0 ? 90 : W - 90;
     const d = w.warnSide < 0 ? -1 : 1;
     c.beginPath();
     c.moveTo(ex + d * 26, 360); c.lineTo(ex - d * 6, 330); c.lineTo(ex - d * 6, 348); c.lineTo(ex - d * 26, 348); c.lineTo(ex - d * 26, 372); c.lineTo(ex - d * 6, 372); c.lineTo(ex - d * 6, 390); c.closePath();
-    inked(c, PNK, 4);
-    hudText(c, 'INCOMING', ex, 400, 2, PNK, 'center');
+    inked(c, RED, 4);
+    hudText(c, 'INCOMING', ex, 400, 2, RED, 'center');
   }
 }

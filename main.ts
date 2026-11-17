@@ -1,6 +1,6 @@
 // GOO PRIX hand-in program (Node 22, standard library only).
 //
-// The game itself is one self-contained file, game/index.html: canvas art, synthesized
+// The game is game/index.html plus the plain scripts in game/src/: canvas art, synthesized
 // WebAudio sound, no libraries and no network requests. This program copies game/ and
 // screenshots/ next to it into the output directory and writes dossier.json with the
 // vendored make.fun library, so the grader can check the files and the judge can read them.

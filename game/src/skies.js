@@ -197,6 +197,27 @@ function drawConfettiStars(c, hx, t) {
   c.globalAlpha = 1;
 }
 
+// The Showroom: sweeping spotlights and a hanging chrome sign over a sterile white hall.
+function drawSpotlights(c, hx, t) {
+  c.save();
+  for (let i = 0; i < 5; i++) {
+    const bx = -560 + i * 280 + wrap(hx * 0.15, 280) - 140, a = Math.sin(t * 0.7 + i * 1.3) * 0.5;
+    const g = c.createLinearGradient(bx, -cam.hz, bx, 0);
+    g.addColorStop(0, 'rgba(255,255,255,0.9)'); g.addColorStop(1, 'rgba(127,242,255,0)');
+    c.fillStyle = g;
+    c.beginPath(); c.moveTo(bx - 10, -cam.hz); c.lineTo(bx + 10, -cam.hz);
+    c.lineTo(bx + Math.sin(a) * 300 + 90, 0); c.lineTo(bx + Math.sin(a) * 300 - 90, 0); c.closePath(); c.fill();
+  }
+  // the sign: SPOTLESS in fat chrome letters
+  const sy0 = -cam.hz + 70;
+  c.fillStyle = '#11151F'; c.fillRect(-250, sy0 - 12, 500, 76);
+  c.strokeStyle = '#7FF2FF'; c.lineWidth = 3; c.strokeRect(-244, sy0 - 6, 488, 64);
+  c.beginPath(); c.moveTo(-180, sy0 - 12); c.lineTo(-180, -cam.hz - 10); c.moveTo(180, sy0 - 12); c.lineTo(180, -cam.hz - 10); c.lineWidth = 4; c.strokeStyle = INK; c.stroke();
+  const on = Math.sin(t * 3) > -0.8;
+  blockText(c, 'SPOTLESS', 0, sy0 + 5, 6, { align: 'center', color: on ? '#E9EDF2' : '#5A6678', shadow: 4, shadowColor: '#7FF2FF' });
+  c.restore();
+}
+
 function drawSky(c, T) {
   const sky = THEME.sky, t = world ? world.t : 0;
   if (sky.lava) { drawLava(c, sky, t); return; }
@@ -216,5 +237,6 @@ function drawSky(c, T) {
   if (sky.eggs) drawEggClouds(c, hx, t);
   if (sky.planet) drawTrashPlanet(c, hx, t);
   if (sky.duck) drawDuckMoon(c, hx, t);
+  if (sky.spots) drawSpotlights(c, hx, t);
   c.restore();
 }

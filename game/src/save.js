@@ -2,15 +2,13 @@
 'use strict';
 
 // ============================================================================================
-// SAVE — best times, trophies and settings in localStorage (silently skipped when blocked)
+// SAVE — best scores, run grades and settings in localStorage (silently skipped when blocked)
 // ============================================================================================
-const SAVE_KEY = 'gooprix.v1';
+const SAVE_KEY = 'gooprix.v2';
 const save = {
-  bestLap: {},        // `${track}:${difficulty}` -> seconds
-  bestRace: {},       // `${track}:${difficulty}` -> seconds
-  bestCup: 0,         // best cup splat score
-  trophies: {},       // `${cup}:${difficulty}` -> 1 gold, 2 silver, 3 bronze
-  unlockedMirror: false,
+  bestRace: {},       // `lvl${level}:${difficulty}` -> best level score
+  bestCup: 0,         // best full-run total
+  trophies: {},       // `run:${difficulty}` -> the best run grade, 'S' to 'D'
   racer: 0,
   difficulty: 1,
   muted: false,

@@ -2,7 +2,7 @@
 'use strict';
 
 // ============================================================================================
-// SCENES — title, select, how-to, intro, race (+pause), results, standings, podium, game over
+// SCENES — title, select, how-to, intro, level (+pause), results, final card, game over
 // ============================================================================================
 const UI = { rects: new Map() };
 function uiRect(id, x, y, w, h) { UI.rects.set(id, [x, y, w, h]); }
@@ -76,70 +76,58 @@ function drawWipe(c) {
   }
 }
 
-function startRaceScene(trackIdx) {
-  reseed(1000 + trackIdx * 31 + (game.cup ? game.cup.race * 7 : 0) + Math.floor(rand() * 1000));
-  setupRace(trackIdx);
+function startLevelScene(levelIdx) {
+  reseed(1000 + levelIdx * 31 + Math.floor(rand() * 1000));
+  setupLevel(levelIdx);
   MUSIC.play(TRACK.def.song);
 }
 
-// ---- TITLE: a live attract race behind a giant logo and the main menu
-const TITLE_ITEMS = ['start', 'quick', 'diff', 'howto'];
-function makeAttract() { reseed(4242); setupRace(3, { attract: true }); world.state = 'run'; startGo(); }
+// ---- TITLE: a live attract flight behind a giant logo and the main menu
+const TITLE_ITEMS = ['start', 'practice', 'diff', 'howto'];
+function makeAttract() { reseed(4242); setupLevel(0, { attract: true }); world.state = 'run'; startGo(); }
 
 const SCENES = {
   title: {
     enter() { makeAttract(); MUSIC.play(SONGS.title); game.menu.i = Math.min(game.menu.i, TITLE_ITEMS.length - 1); },
     update(dt) {
       raceStep(dt); updateCamera(dt);
-      if (world.player.dist > CFG.laps * TRACK.L + 200) makeAttract();
       const sel = menuNav(game.menu, TITLE_ITEMS);
       const cur = TITLE_ITEMS[game.menu.i];
       const lr = keyHit('ArrowLeft', 'KeyA') ? -1 : keyHit('ArrowRight', 'KeyD') ? 1 : 0;
       if (lr && cur === 'diff') { game.diff = (game.diff + 3 + lr) % 3; save.difficulty = game.diff; writeSave(); sfx.uiMove(); }
+      if (lr && cur === 'practice') { game.practiceLevel = (game.practiceLevel + LEVELS.length + lr) % LEVELS.length; sfx.uiMove(); }
       if (sel < 0) return;
       const id = TITLE_ITEMS[sel];
       sfx.uiSelect();
-      if (id === 'start') { game.cupMode = 'cup'; goTo('select'); }
-      else if (id === 'quick') { game.cupMode = 'quick'; goTo('select'); }
+      if (id === 'start') { game.mode = 'campaign'; goTo('select'); }
+      else if (id === 'practice') { game.mode = 'practice'; goTo('select'); }
       else if (id === 'diff') { game.diff = (game.diff + 1) % 3; save.difficulty = game.diff; writeSave(); }
       else if (id === 'howto') goTo('howto');
     },
     draw(c) {
       applyCamera();
       renderWorld(c);
-      dim(c, 0.38);
-      // the logo: giant yellow blocks with a pink extrude, one goo drip off the second O
-      const lx = W / 2, ly = 62, px = 17;
-      blockText(c, 'GOO PRIX', lx, ly, px, { align: 'center', color: CREAM, outline: 7, outlineColor: INK, shadow: 13, shadowColor: PNK, skew: 0.08 });
-      const w0 = textWidth('GOO PRIX', px);
-      const ox = lx - w0 / 2 + 2 * 6 * px + 2.5 * px - 7 * px * 0.08 * 0;
-      const drip = 8 + 14 * (0.5 + 0.5 * Math.sin(game.sceneT * 1.6));
-      c.fillStyle = GOO_C;
-      c.fillRect(ox - px * 0.6, ly + 7 * px - 2, px * 1.2, drip);
-      c.beginPath(); c.arc(ox, ly + 7 * px + drip, px * 0.75, 0, TAU); c.fill();
-      hudText(c, 'A FLAP-AND-SPLAT GRAND PRIX', lx, ly + 7 * px + 38, 3, WHT, 'center');
-      hudText(c, 'FLAP THROUGH EVERY WINDOW · SPLAT RIVALS · WIN 5 RACES', lx, ly + 7 * px + 74, 2, CYN, 'center');
+      dim(c, 0.34);
+      drawLogo(c, W / 2, 56, 17, game.sceneT);
+      hudText(c, 'A FLAP-AND-SPLAT SCORE ATTACK', W / 2, 220, 3, WHT, 'center');
+      hudText(c, 'SHOOT EVERYTHING · CHAIN YOUR HITS · DON\'T GET KNOCKED · 5 WORLDS + 1 BOSS', W / 2, 254, 2, CYN, 'center');
       const labels = {
-        start: game.mirror || save.unlockedMirror ? 'START CUP' : 'START CUP',
-        quick: 'QUICK RACE',
+        start: 'START RUN',
+        practice: 'PRACTICE: ' + (game.practiceLevel + 1) + ' ' + LEVELS[game.practiceLevel].name,
         diff: 'DIFFICULTY: ' + DIFFS[game.diff],
         howto: 'HOW TO PLAY',
       };
-      const bw = 420, bh = 44, bx = W / 2 - bw / 2;
-      TITLE_ITEMS.forEach((id, i) => drawButton(c, id, labels[id], bx, 318 + i * 58, bw, bh, game.menu.i === i, { arrows: id === 'diff' }));
-      // best line and trophies
-      const best = save.bestCup ? 'BEST CUP ' + save.bestCup.toLocaleString('en-US') : 'NO CUP WON YET';
-      hudText(c, best, W / 2, 582, 3, YEL, 'center');
-      let tx = W / 2 - 3.2 * 48;
-      let won = 0;
-      for (const cupName of ['gloop', 'regloop']) for (let d = 0; d < 3; d++) {
-        const tr = save.trophies[cupName + ':' + d];
-        if (tr) won++;
-        drawTrophy(c, tx, 628, 26, tr ? 4 - tr : 0);
-        tx += 48;
-      }
-      hudText(c, 'CUPS ' + won + '/6', tx - 10, 620, 2, CYN);
-      // the controls strip, on its own solid band
+      const bw = 460, bh = 44, bx = W / 2 - bw / 2;
+      TITLE_ITEMS.forEach((id, i) => drawButton(c, id, labels[id], bx, 306 + i * 56, bw, bh, game.menu.i === i, { arrows: id === 'diff' || id === 'practice', px: id === 'practice' ? 2 : 3 }));
+      // best run and the best grade on each difficulty
+      const best = save.bestCup ? 'BEST RUN ' + fmtScore(save.bestCup) : 'NO RUN FINISHED YET';
+      hudText(c, best, W / 2, 548, 3, YEL, 'center');
+      DIFFS.forEach((d, k) => {
+        const g = save.trophies['run:' + k];
+        const x = W / 2 - 220 + k * 160;
+        drawGradeBadge(c, x + 20, 612, 24, g || null);
+        hudText(c, d, x + 52, 604, 2, g ? WHT : '#6a6a76');
+      });
       c.fillStyle = '#000'; c.fillRect(0, 664, W, 56);
       c.fillStyle = '#262626'; c.fillRect(0, 664, W, 2);
       blockText(c, '↑ FLAP    ← → STEER    ↓ DIVE    SPACE SHOOT    X ITEM    ESC PAUSE', W / 2, 684, 2, { align: 'center', color: '#fff' });
@@ -151,30 +139,32 @@ const SCENES = {
       if (keyHit('Escape', 'Enter', 'Space', 'Backspace') || input.click) { sfx.uiBack(); goTo('title'); }
     },
     draw(c) {
-      applyCamera(); renderWorld(c); dim(c, 0.82);
-      blockText(c, 'HOW TO PLAY', W / 2, 40, 7, { align: 'center', color: YEL, outline: 4, outlineColor: INK, shadow: 9, shadowColor: PNK });
+      applyCamera(); renderWorld(c); dim(c, 0.84);
+      blockText(c, 'HOW TO PLAY', W / 2, 30, 7, { align: 'center', color: YEL, outline: 4, outlineColor: INK, shadow: 9, shadowColor: PNK });
       const rows = [
-        ['FLAP', '↑  (OR W)', 'FLY THROUGH THE ICING-RIMMED WINDOW IN EVERY WALL. MISS AND YOU BONK.'],
-        ['STEER', '← →  (OR A / D)', 'THE DASHED LINE ON THE FLOOR IS THE RACING LINE.'],
-        ['DIVE', 'HOLD ↓', 'DIVE, THEN FLAP RIGHT AFTER: SWOOP BOOST. LONGER DIVE, BIGGER BOOST.'],
-        ['SHOOT', 'SPACE  (HOLD TO KEEP FIRING)', 'AUTO-AIMS AT THE RIVAL AHEAD. GOO SLOWS THEM RIGHT DOWN.'],
-        ['ITEM', 'X  (OR SHIFT)', 'FLY INTO JELLY CUBES FOR ITEMS. THE GOLD ONE ROLLS BETTER.'],
-        ['RINGS', 'FLY THROUGH', 'DIAMOND RINGS BOOST YOU. SQUARE BALLS ARE COINS: +1% TOP SPEED EACH.'],
+        ['FLY', '↑ FLAP  ← → STEER  ↓ DIVE', 'THREAD THE ICING WINDOWS FOR +100, A BULLSEYE FOR +250. DIVE THEN FLAP TO BOOST.'],
+        ['SHOOT', 'SPACE (AUTO-AIMS)', 'EVERY HIT GROWS YOUR CHAIN. EVERY 5 HITS ADD x1, UP TO x8. STOP HITTING AND IT DRAINS.'],
+        ['KNOCKS', 'WALLS, BOLTS, GOOP', 'A KNOCK COSTS POINTS AND WIPES YOUR MULTIPLIER. GRINDING THE RAILS BLEEDS POINTS.'],
+        ['ITEMS', 'X  (OR SHIFT)', 'FLY INTO JELLY CUBES. AUTO-GOO, STUN BOMB, HOMING SOCK, BAZOOKA AND MORE.'],
+        ['LEVELS', 'BEAT THE QUOTA', 'EACH WORLD BENDS THE RULES: RHYTHM, BLIZZARDS, FLIPPED GRAVITY, ZERO-G. THEN THE BOSS.'],
       ];
       rows.forEach((r, i) => {
-        const y = 130 + i * 62;
-        blockText(c, r[0], 120, y, 4, { color: '#fff' });
-        blockText(c, r[1], 330, y, 2, { color: CYN });
-        smallText(c, r[2], 330, y + 22, 18, '#c8c8c8');
+        const y = 108 + i * 64;
+        blockText(c, r[0], 70, y, 4, { color: '#fff' });
+        blockText(c, r[1], 290, y, 2, { color: CYN });
+        smallText(c, r[2], 290, y + 22, 18, '#c8c8c8');
       });
-      const items = Object.keys(ITEMS);
-      items.forEach((it, i) => {
-        const x = 60 + (i % 5) * 236, y = 516 + Math.floor(i / 5) * 70;
-        strokeBox(c, x, y, 54, 54, 2, '#585858');
-        drawItemIcon(c, it, x + 27, y + 27, 46);
-        blockText(c, ITEMS[it].name, x + 66, y + 20, 2, { color: '#fff' });
+      // the targets and what they are worth, wearing this world's skins
+      const cls = ['floater', 'splitter', 'zipper', 'tank', 'ace', 'goldie'];
+      const t = game.sceneT;
+      cls.forEach((k, i) => {
+        const x = 110 + i * 212, y = 470;
+        plate(c, x - 86, y - 56, 172, 158, k === 'goldie' ? YEL : k === 'ace' ? RED : CYN);
+        drawTargetIcon(c, k, x, y + 4, 34, t);
+        blockText(c, k === 'ace' ? 'RIVAL ACE' : k.toUpperCase(), x, y + 52, 2, { align: 'center', color: WHT });
+        hudText(c, '+' + TARGET_CLASSES[k].pts, x, y + 72, 2, k === 'goldie' ? YEL : GOO_C, 'center');
       });
-      blockText(c, 'TOP 5 TO QUALIFY. 6TH OR WORSE COSTS A RETRY. RUN OUT AND IT IS GAME OVER.', W / 2, 676, 2, { align: 'center', color: '#909090' });
+      blockText(c, 'S GRADE = 3x THE QUOTA. 3 CONTINUES PER RUN. MAKE THE BOSS FILTHY.', W / 2, 660, 2, { align: 'center', color: '#909090' });
     },
   },
 
@@ -182,83 +172,107 @@ const SCENES = {
     enter() { game.selRow = 0; if (!world || !world.attract) makeAttract(); },
     update(dt) {
       raceStep(dt); updateCamera(dt);
-      const quick = game.cupMode === 'quick';
+      const practice = game.mode === 'practice';
       let i = game.racer;
-      if (keyHit('ArrowRight', 'KeyD')) { if (game.selRow === 0) i = (i + 1) % 8; else if (game.selRow === 1 && quick) game.quickTrack = (game.quickTrack + 1) % 5; else if (game.selRow === 1) game.mirror = save.unlockedMirror ? !game.mirror : false; sfx.uiMove(); }
-      if (keyHit('ArrowLeft', 'KeyA')) { if (game.selRow === 0) i = (i + 7) % 8; else if (game.selRow === 1 && quick) game.quickTrack = (game.quickTrack + 4) % 5; else if (game.selRow === 1) game.mirror = save.unlockedMirror ? !game.mirror : false; sfx.uiMove(); }
+      const lr = keyHit('ArrowRight', 'KeyD') ? 1 : keyHit('ArrowLeft', 'KeyA') ? -1 : 0;
+      if (lr) {
+        if (game.selRow === 0) i = (i + 8 + lr) % 8;
+        else if (game.selRow === 1 && practice) game.practiceLevel = (game.practiceLevel + LEVELS.length + lr) % LEVELS.length;
+        sfx.uiMove();
+      }
       if (keyHit('ArrowDown', 'KeyS')) { if (game.selRow === 0 && i < 4) i += 4; else game.selRow = Math.min(2, game.selRow + 1); sfx.uiMove(); }
       if (keyHit('ArrowUp', 'KeyW')) { if (game.selRow > 0) game.selRow--; else if (i >= 4) i -= 4; sfx.uiMove(); }
       if (input.moved) for (let k = 0; k < 8; k++) if (uiOver('card' + k) && i !== k) { i = k; game.selRow = 0; sfx.uiMove(); }
       if (input.click) {
         for (let k = 0; k < 8; k++) if (uiOver('card' + k)) { i = k; game.selRow = 0; }
-        if (uiOver('opt')) { if (quick) game.quickTrack = (game.quickTrack + 1) % 5; else game.mirror = save.unlockedMirror ? !game.mirror : false; sfx.uiMove(); }
+        if (uiOver('opt') && practice) { game.practiceLevel = (game.practiceLevel + 1) % LEVELS.length; sfx.uiMove(); }
       }
+      if (i !== game.racer) say(RACERS[i].pilot, 0, { cooldown: 300 });
       game.racer = i;
       if (keyHit('Escape', 'Backspace')) { sfx.uiBack(); goTo('title'); return; }
       if (keyHit('Enter', 'Space') || (input.click && uiOver('go'))) {
         save.racer = game.racer; writeSave(); sfx.uiSelect();
-        startCup(game.cupMode);
-        goTo('intro', () => startRaceScene(game.cup.tracks[0]));
+        const lvl = practice ? game.practiceLevel : 0;
+        startRun(game.mode, lvl);
+        goTo('intro', () => startLevelScene(lvl));
       }
     },
     draw(c) {
-      applyCamera(); renderWorld(c); dim(c, 0.5);
-      blockText(c, 'PICK YOUR IDIOT', W / 2, 34, 6, { align: 'center', color: YEL, outline: 4, outlineColor: INK, shadow: 8, shadowColor: PNK });
-      const cw = 262, ch = 196, gx = W / 2 - (cw * 4 + 18 * 3) / 2, gy = 110;
+      applyCamera(); renderWorld(c); dim(c, 0.55);
+      blockText(c, 'PICK YOUR SHIP', W / 2, 26, 6, { align: 'center', color: YEL, outline: 4, outlineColor: INK, shadow: 8, shadowColor: PNK });
+      const cw = 262, ch = 196, gx = W / 2 - (cw * 4 + 18 * 3) / 2, gy = 96;
       for (let k = 0; k < 8; k++) {
         const x = gx + (k % 4) * (cw + 18), y = gy + Math.floor(k / 4) * (ch + 18);
         const sel = k === game.racer;
+        const d = RACERS[k];
         uiRect('card' + k, x, y, cw, ch);
         if (sel) { c.fillStyle = PNK; c.fillRect(x + 7, y + 7, cw, ch); }
-        c.fillStyle = 'rgba(11,11,18,0.9)'; c.fillRect(x, y, cw, ch);
-        strokeBox(c, x, y, cw, ch, sel ? 5 : 3, sel ? YEL : RACERS[k].color);
-        drawRacerArt(c, RACERS[k], x + cw / 2, y + 82, sel ? 118 : 96, { color: INK, fill: RACERS[k].color, flap: sel ? (Math.sin(game.sceneT * 8) > 0.6 ? 1 : 0) : 0, t: game.sceneT, mini: false });
-        blockText(c, String(k + 1), x + 14, y + 12, 3, { color: RACERS[k].color });
-        blockText(c, RACERS[k].name, x + cw / 2, y + ch - 34, 3, { align: 'center', color: sel ? YEL : WHT });
+        // each card is a manga panel: a speed-line burst behind the ship
+        c.save(); c.beginPath(); c.rect(x, y, cw, ch); c.clip();
+        const g = c.createRadialGradient(x + cw / 2, y + 86, 10, x + cw / 2, y + 86, cw * 0.7);
+        g.addColorStop(0, sel ? shade(d.color, 0.55) : '#1A1A26'); g.addColorStop(1, '#07070C');
+        c.fillStyle = g; c.fillRect(x, y, cw, ch);
+        if (sel) {
+          c.strokeStyle = 'rgba(255,255,255,0.18)'; c.lineWidth = 2;
+          const r = mulberry32(k * 31 + Math.floor(game.sceneT * 12));
+          c.beginPath();
+          for (let j = 0; j < 40; j++) { const a = r() * TAU, r0 = 40 + r() * 40; c.moveTo(x + cw / 2 + Math.cos(a) * r0, y + 86 + Math.sin(a) * r0); c.lineTo(x + cw / 2 + Math.cos(a) * 300, y + 86 + Math.sin(a) * 300); }
+          c.stroke();
+        }
+        c.restore();
+        strokeBox(c, x, y, cw, ch, sel ? 5 : 3, sel ? YEL : d.color);
+        drawShip(c, d, x + cw / 2, y + 84 + (sel ? Math.sin(game.sceneT * 3) * 4 : 0), sel ? 150 : 124, { flap: sel ? (Math.sin(game.sceneT * 8) > 0.6 ? 1 : 0) : 0, t: game.sceneT + k, thrust: sel ? 1 : 0.4, speed: sel });
+        blockText(c, String(k + 1), x + 14, y + 12, 3, { color: d.color });
+        blockText(c, d.name, x + cw / 2, y + ch - 50, 3, { align: 'center', color: sel ? YEL : WHT });
+        blockText(c, 'PILOT ' + d.pilot, x + cw / 2, y + ch - 24, 2, { align: 'center', color: CYN });
       }
-      // stats and bio of the highlighted racer
       const d = RACERS[game.racer];
-      const sy0 = gy + 2 * (ch + 18) + 6;
+      const sy0 = gy + 2 * (ch + 18) + 4;
       plate(c, gx - 12, sy0 - 12, cw * 4 + 18 * 3 + 24, 92, d.color);
-      ['SPEED', 'FLAP', 'GOO', 'WEIGHT'].forEach((nm, j) => {
+      STAT_NAMES.forEach((nm, j) => {
         const x = gx + j * 230;
         blockText(c, nm, x, sy0, 2, { color: CYN });
         for (let b = 0; b < 5; b++) { c.fillStyle = b < d.stats[j] ? d.color : '#22222C'; c.fillRect(x + b * 34, sy0 + 20, 28, 14); }
       });
+      blockText(c, '"' + d.bark + '"', gx + 4 * 230 + 10, sy0 + 8, 2, { color: YEL });
       smallText(c, d.bio, W / 2, sy0 + 50, 18, WHT, 'center');
-      const quick = game.cupMode === 'quick';
-      const optLabel = quick ? 'TRACK: ' + TRACKS[game.quickTrack].name : (game.mirror ? 'REGLOOP CUP (MIRROR)' : 'THE GLOOP CUP · 5 RACES') + (save.unlockedMirror ? '' : '');
-      drawButton(c, 'opt', optLabel, W / 2 - 300, 632, 360, 44, game.selRow === 1, { arrows: quick || save.unlockedMirror, px: 2 });
-      drawButton(c, 'go', 'RACE!', W / 2 + 80, 632, 220, 44, game.selRow === 2, { px: 3 });
-      hudText(c, DIFFS[game.diff] + ' · ESC BACK', W / 2, 688, 2, CYN, 'center');
+      const practice = game.mode === 'practice';
+      const optLabel = practice ? 'PRACTICE: ' + (game.practiceLevel + 1) + ' ' + LEVELS[game.practiceLevel].name : 'FULL RUN: 5 LEVELS + BOSS';
+      drawButton(c, 'opt', optLabel, W / 2 - 330, 626, 400, 44, game.selRow === 1, { arrows: practice, px: 2 });
+      drawButton(c, 'go', 'FLY!', W / 2 + 90, 626, 240, 44, game.selRow === 2, { px: 3 });
+      hudText(c, DIFFS[game.diff] + ' · ENTER TO FLY · ESC BACK', W / 2, 684, 2, CYN, 'center');
     },
   },
 
   intro: {
-    enter() { world.introT = 0; },
+    enter() { world.introT = 0; world.introSaid = false; },
     update(dt) {
       world.introT += dt;
       world.t += dt; updateThings(TRACK, world.t, dt);
-      if (world.introT > 2.8 || keyHit('Enter', 'Space', 'Escape') || input.click) enterScene('race');
+      if (!world.introSaid && world.introT > 0.4) { world.introSaid = true; say(world.level.say, 3); }
+      if (world.introT > 3.4 || keyHit('Enter', 'Space', 'Escape') || input.click) enterScene('race');
     },
     draw(c) {
-      const p = world.player;
-      const e = smooth01(world.introT / 2.6);
-      world.camU = lerp(0, p.u, e); world.camV = lerp(12.5, p.v + CFG.camUp, e);
-      applyCamera(p.dist - lerp(46, CFG.camBack, e));
+      const w = world, p = w.player, L = w.level;
+      const e = smooth01(w.introT / 3.2);
+      w.camU = lerp(0, p.u, e); w.camV = lerp(12.5, p.v + CFG.camUp, e);
+      applyCamera(p.dist - lerp(52, CFG.camBack, e));
       renderWorld(c);
       if (e > 0.85) drawPlayerCraft(c);
-      const k = smooth01(world.introT / 0.35);
-      const def = TRACK.def;
-      const cup = game.cup;
-      c.save(); c.translate((1 - k) * -600, 0);
-      c.fillStyle = PNK; c.fillRect(0, 222, W * 0.78, 96);
-      c.fillStyle = YEL; c.fillRect(0, 214, W * 0.78, 96);
-      blockText(c, (TRACK.mirror < 0 ? 'MIRROR ' : '') + def.name, 70, 228, 10, { color: INK, skew: 0.12 });
+      const k = smooth01(w.introT / 0.35);
+      c.save(); c.translate((1 - k) * -700, 0);
+      c.fillStyle = PNK; c.fillRect(0, 196, W * 0.8, 112);
+      c.fillStyle = L.boss ? RED : YEL; c.fillRect(0, 188, W * 0.8, 112);
+      blockText(c, L.boss ? 'FINAL BOSS' : 'LEVEL ' + (w.levelIdx + 1) + ' OF 5', 70, 200, 3, { color: L.boss ? WHT : INK });
+      blockText(c, L.name, 70, 228, 9, { color: L.boss ? WHT : INK, skew: 0.12 });
       c.restore();
-      hudText(c, cup.mode === 'cup' ? 'RACE ' + (cup.race + 1) + '/5' : 'QUICK RACE', 70, 336, 4, WHT);
-      plate(c, 56, 372, Math.min(W - 112, 40 + def.tip.length * 11), 40, CYN);
-      smallText(c, def.tip, 72, 382, 20, WHT);
+      const k2 = smooth01((w.introT - 0.3) / 0.35);
+      c.save(); c.translate((1 - k2) * 900, 0);
+      hudText(c, TRACK.def.name + (L.boss ? '' : ' · QUOTA ' + fmtScore(w.quota)), 70, 322, 3, WHT);
+      plate(c, 56, 360, Math.min(W - 112, 40 + textWidth(L.blurb, 2)), 44, CYN);
+      blockText(c, L.blurb, 76, 374, 2, { color: WHT });
+      c.restore();
+      if (L.boss) drawBossPortrait(c, W - 250, 520, w.introT);
       hudText(c, 'ENTER TO SKIP', W - 40, H - 40, 2, CYN, 'right');
     },
   },
@@ -269,212 +283,243 @@ const SCENES = {
       if (keyHit('Escape', 'KeyP')) togglePause();
       if (keyHit('KeyM')) AU.setMuted(!save.muted);
       if (game.paused) { pauseUpdate(); return; }
-      if (keyHit('KeyR')) { restartRace(); return; }
+      if (keyHit('KeyR')) { restartLevel(); return; }
       if (world.hitstop > 0) { world.hitstop -= dt; return; }
       raceStep(dt);
       updateCamera(dt);
+      world.beatFlash = Math.max(0, (world.beatFlash || 0) - dt);
     },
-    draw(c) {
-      applyCamera();
-      renderWorld(c);
-      drawPlayerCraft(c);
-      drawSpeedDashes(c);
-      drawWindscreen(c);
-      drawHUD(c);
-      drawPopups(c);
-      if (world.state === 'countdown') {
-        const n = Math.ceil(world.countdown);
-        if (n <= 3 && n >= 1) {
-          const f = world.countdown - Math.floor(world.countdown);
-          c.save(); c.translate(W / 2, 300); const sc = 0.8 + f * 0.5; c.scale(sc, sc);
-          blockText(c, String(n), 0, -84, 24, { align: 'center', color: YEL, outline: 8, outlineColor: INK, shadow: 14, shadowColor: PNK });
-          c.restore();
-        }
-      }
-      if (!game.paused) drawCrosshair(c);
-      if (world.flash > 0) { c.globalCompositeOperation = 'difference'; c.fillStyle = '#fff'; c.fillRect(0, 0, W, H); c.globalCompositeOperation = 'source-over'; }
-      if (world.flash2 > 0) { c.globalAlpha = world.flash2 * 1.2; c.fillStyle = CREAM; c.fillRect(0, 0, W, H); c.globalAlpha = 1; }
-      if (game.paused) drawPause(c);
-    },
+    draw(c) { drawLevelFrame(c); if (game.paused) drawPause(c); },
   },
 
   results: {
-    enter() { game.resMenu = { i: 0 }; MUSIC.play(SONGS.results); if (!game.lastResults.dnq && game.lastResults.pos < 3) sfx.fanfare(); else if (game.lastResults.dnq) sfx.sad(); },
+    enter() {
+      game.resMenu = { i: 0 };
+      MUSIC.play(SONGS.results);
+      const res = game.lastResults;
+      if (res.pass) sfx.fanfare(); else sfx.sad();
+      game.resSaid = false;
+    },
     update(dt) {
       world.t += dt; updateParts(dt);
-      const res = game.lastResults, cup = game.cup;
-      const opts = resultOptions(res, cup);
+      const res = game.lastResults;
+      if (!game.resSaid && game.sceneT > 1.7) {
+        game.resSaid = true;
+        say(res.pass ? (res.grade === 'S' ? 'Ess rank! Masterpiece!' : 'Grade ' + res.grade + '!') : 'Rejected!', 3);
+      }
+      const opts = resultOptions(res);
       const sel = menuNav(game.resMenu, opts.map((o) => o.id));
       if (sel < 0) return;
       sfx.uiSelect();
       opts[sel].go();
     },
     draw(c) {
-      applyCamera(); renderWorld(c); dim(c, 0.55);
+      applyCamera(); renderWorld(c); dim(c, 0.6);
       drawResults(c, game.lastResults, game.sceneT);
     },
   },
 
-  standings: {
-    enter() { game.standMenu = { i: 0 }; },
+  final: {
+    enter() { game.finMenu = { i: 0 }; MUSIC.play(SONGS.podium); sfx.fanfare(); game.finSaid = false; },
     update(dt) {
-      world.t += dt;
-      const sel = menuNav(game.standMenu, ['next']);
-      if (sel === 0) { sfx.uiSelect(); game.cup.race++; goTo('intro', () => startRaceScene(game.cup.tracks[game.cup.race])); }
-    },
-    draw(c) {
-      applyCamera(); renderWorld(c); dim(c, 0.85);
-      drawStandings(c, game.sceneT);
-    },
-  },
-
-  podium: {
-    enter() { game.podMenu = { i: 0 }; MUSIC.play(SONGS.podium); sfx.fanfare(); game.podPlace = finishCup(); },
-    update(dt) {
-      const sel = menuNav(game.podMenu, ['again', 'title']);
-      if (sel === 0) { sfx.uiSelect(); startCup('cup'); goTo('intro', () => startRaceScene(0)); }
+      if (!game.finSaid && game.sceneT > 2.2) { game.finSaid = true; const g = runGrade(); say(g === 'S' ? 'Masterpiece! Ess rank!' : g === 'A' ? 'Filthy work! A rank!' : 'Grade ' + g + '. Not bad!', 3); }
+      const sel = menuNav(game.finMenu, ['again', 'title']);
+      if (sel === 0) { sfx.uiSelect(); startRun('campaign', 0); goTo('intro', () => startLevelScene(0)); }
       if (sel === 1) { sfx.uiSelect(); goTo('title'); }
     },
-    draw(c) { drawPodium(c, game.sceneT); },
+    draw(c) { drawFinal(c, game.sceneT); },
   },
 
   gameover: {
-    enter() { game.goMenu = { i: 0 }; MUSIC.play(SONGS.over); },
+    enter() { game.goMenu = { i: 0 }; MUSIC.play(SONGS.over); say('Game over!', 3); },
     update(dt) {
       const sel = menuNav(game.goMenu, ['retry', 'title']);
-      if (sel === 0) { sfx.uiSelect(); startCup('cup'); goTo('intro', () => startRaceScene(0)); }
+      if (sel === 0) { sfx.uiSelect(); startRun('campaign', 0); goTo('intro', () => startLevelScene(0)); }
       if (sel === 1) { sfx.uiSelect(); goTo('title'); }
     },
     draw(c) { drawGameOver(c, game.sceneT); },
   },
 };
 
-function resultOptions(res, cup) {
-  const opts = [];
-  if (cup.mode === 'quick') {
-    opts.push({ id: 'retry', label: 'RACE AGAIN', go: () => goTo('intro', () => startRaceScene(res.trackIdx)) });
+// The level as you fly it: world, ship, screen FX, HUD, popups, countdown, crosshair, flashes.
+function drawLevelFrame(c) {
+  const w = world;
+  applyCamera();
+  renderWorld(c);
+  drawPlayerCraft(c);
+  drawSpeedDashes(c);
+  drawScreenFx(c);
+  drawWindscreen(c);
+  drawHUD(c);
+  drawPopups(c);
+  if (w.state === 'countdown') {
+    const n = Math.ceil(w.countdown);
+    if (n <= 3 && n >= 1) {
+      const f = w.countdown - Math.floor(w.countdown);
+      c.save(); c.translate(W / 2, 330); const sc = 0.8 + f * 0.5; c.scale(sc, sc);
+      blockText(c, String(n), 0, -84, 24, { align: 'center', color: YEL, outline: 8, outlineColor: INK, shadow: 14, shadowColor: PNK });
+      c.restore();
+    }
+  }
+  if (!game.paused && w.state !== 'done') drawCrosshair(c);
+  if (w.flash > 0) { c.globalCompositeOperation = 'difference'; c.fillStyle = '#fff'; c.fillRect(0, 0, W, H); c.globalCompositeOperation = 'source-over'; }
+  if (w.flash2 > 0) { c.globalAlpha = Math.min(1, w.flash2 * 1.2); c.fillStyle = CREAM; c.fillRect(0, 0, W, H); c.globalAlpha = 1; }
+}
+
+// ---- the logo: giant cream blocks with an orange extrude and a goo drip off the second O
+function drawLogo(c, lx, ly, px, t) {
+  blockText(c, 'GOO PRIX', lx, ly, px, { align: 'center', color: CREAM, outline: 7, outlineColor: INK, shadow: 13, shadowColor: PNK, skew: 0.08 });
+  const w0 = textWidth('GOO PRIX', px);
+  const ox = lx - w0 / 2 + 2 * 6 * px + 2.5 * px;
+  const drip = 8 + 14 * (0.5 + 0.5 * Math.sin(t * 1.6));
+  c.beginPath(); c.roundRect(ox - px * 0.6, ly + 7 * px - 4, px * 1.2, drip + 4, px * 0.5);
+  gooShade(c, ox, ly + 7 * px + drip / 2, px * 1.2);
+  gooBlob(c, ox, ly + 7 * px + drip, px * 0.8, 7, t);
+}
+// A letter grade in a stamped roundel (null: an empty slot).
+function drawGradeBadge(c, x, y, r, g) {
+  c.beginPath(); c.arc(x, y, r, 0, TAU);
+  c.fillStyle = g ? GRADE_COLORS[g] : '#15151E'; c.fill();
+  c.lineWidth = 4; c.strokeStyle = INK; c.stroke();
+  c.lineWidth = 2; c.strokeStyle = g ? WHT : '#3a3a44'; c.beginPath(); c.arc(x, y, r - 5, 0, TAU); c.stroke();
+  blockText(c, g || '-', x + r * 0.03, y - r * 0.42, r * 0.12, { align: 'center', color: g ? INK : '#3a3a44' });
+}
+// A big rubber-stamp grade, slammed down at an angle.
+function drawGradeStamp(c, x, y, g, t, size) {
+  const s = size || 1;
+  const k = clamp(t / 0.22, 0, 1);
+  const sc = (1 + (1 - k) * 2.2) * s;
+  c.save(); c.translate(x, y); c.rotate(-0.18); c.scale(sc, sc); c.globalAlpha = k;
+  c.beginPath(); c.roundRect(-82, -82, 164, 164, 22);
+  c.fillStyle = 'rgba(11,11,18,0.85)'; c.fill();
+  c.lineWidth = 10; c.strokeStyle = GRADE_COLORS[g]; c.stroke();
+  c.lineWidth = 3; c.strokeStyle = WHT; c.beginPath(); c.roundRect(-70, -70, 140, 140, 16); c.stroke();
+  blockText(c, g, 0, -50, 15, { align: 'center', color: GRADE_COLORS[g], outline: 4, outlineColor: INK, shadow: 6, shadowColor: g === 'S' ? PNK : INK });
+  c.restore();
+  if (g === 'S' && k >= 1) { glint(c, x + 60 * s, y - 70 * s, 22 * s * (0.6 + 0.4 * Math.sin(t * 8)), 0.95); glint(c, x - 70 * s, y + 50 * s, 14 * s * (0.6 + 0.4 * Math.sin(t * 6 + 1)), 0.9); }
+}
+// One target class drawn on its own (the how-to card), in the current world's skin.
+function drawTargetIcon(c, cls, x, y, s, t) {
+  const fake = { cls, skin: SKINS[THEME.id][cls], ph: cls.length, hp: 1, maxHp: 1, r: 1, splats: [], hitT: 0, gen: 0, flee: 6, giant: false };
+  if (cls === 'ace') { drawShip(c, RACERS[(game.racer + 3) % 8], x, y, s * 2.6, { t, thrust: 1 }); return; }
+  c.save(); c.translate(x, y);
+  drawSkin(c, fake.skin, s, clamp(s * 0.09, 1.2, 5), t, fake);
+  c.restore();
+}
+// Mister Spotless leaning into the boss intro card.
+function drawBossPortrait(c, x, y, t) {
+  const k = smooth01((t - 0.6) / 0.5);
+  if (k <= 0) return;
+  const b = { u: 0, v: 0, dist: 0, filth: 0, phase: 1, maw: 0.2 + 0.2 * Math.sin(t * 3), turrets: BOSS.turrets.map(([tx, ty]) => ({ x: tx, y: ty, hp: 6 })), splats: [], dead: false, stun: 0, hitT: 0, armT: t, bleach: 0 };
+  c.save(); c.translate(x + (1 - k) * 500, y);
+  c.scale(0.55, 0.55);
+  drawBossAt(c, b, 0, 0, 60, t);
+  c.restore();
+  hudText(c, '"YOU\'RE TRACKING GOO ON MY FLOOR."', x, y + 170, 2, CYN, 'center');
+}
+
+function resultOptions(res) {
+  const run = game.run, opts = [];
+  const L = LEVELS[res.levelIdx];
+  const nextIdx = res.levelIdx + 1;
+  if (run.mode === 'practice') {
+    opts.push({ id: 'retry', label: 'RETRY ' + L.name, go: () => goTo('intro', () => startLevelScene(res.levelIdx)) });
+    if (nextIdx < LEVELS.length) opts.push({ id: 'next', label: 'NEXT: ' + LEVELS[nextIdx].name, go: () => { game.practiceLevel = nextIdx; goTo('intro', () => startLevelScene(nextIdx)); } });
     opts.push({ id: 'title', label: 'TITLE', go: () => goTo('title') });
     return opts;
   }
-  if (res.dnq) {
-    if (cup.tokens > 0) opts.push({ id: 'retry', label: 'RETRY (' + cup.tokens + ' LEFT)', go: () => { cup.tokens--; goTo('intro', () => startRaceScene(res.trackIdx)); } });
+  if (!res.pass) {
+    if (run.continues > 0) opts.push({ id: 'retry', label: 'CONTINUE (' + run.continues + ' LEFT)', go: () => { run.continues--; goTo('intro', () => startLevelScene(res.levelIdx)); } });
     else opts.push({ id: 'over', label: 'GAME OVER', go: () => goTo('gameover') });
     opts.push({ id: 'title', label: 'QUIT', go: () => goTo('title') });
     return opts;
   }
-  if (cup.race < cup.tracks.length - 1) opts.push({ id: 'next', label: 'STANDINGS', go: () => goTo('standings') });
-  else opts.push({ id: 'next', label: 'TO THE PODIUM', go: () => goTo('podium') });
+  if (nextIdx < LEVELS.length) opts.push({ id: 'next', label: LEVELS[nextIdx].boss ? 'FACE THE FINAL BOSS' : 'NEXT: ' + LEVELS[nextIdx].name + ' (' + (nextIdx + 1) + '/5)', go: () => { run.level = nextIdx; goTo('intro', () => startLevelScene(nextIdx)); } });
+  else opts.push({ id: 'next', label: 'FINAL RESULTS', go: () => goTo('final') });
   return opts;
 }
 
 function drawResults(c, res, t) {
-  const cup = game.cup;
-  hudText(c, res.dnq ? 'DID NOT QUALIFY' : 'RESULTS', 60, 34, 6, res.dnq ? PNK : YEL);
-  hudText(c, TRACKS[res.trackIdx].name + (cup.mode === 'cup' ? '  ·  RACE ' + (cup.race + 1) + '/5' : ''), 60, 86, 2, CYN);
-  // the table
-  plate(c, 44, 108, 672, 8 * 58 + 14);
-  res.order.forEach((row, i) => {
-    const k = clamp((t - i * 0.06) / 0.25, 0, 1);
-    const y = 120 + i * 58, x = 60 - (1 - smooth01(k)) * 500;
-    const me = row.isPlayer;
-    c.fillStyle = me ? YEL : 'rgba(255,255,255,0.05)'; c.fillRect(x, y, 640, 50);
-    if (!me) { c.fillStyle = RACERS[row.idx].color; c.fillRect(x, y, 5, 50); }
-    const ink = me ? INK : WHT;
-    blockText(c, String(i + 1), x + 34, y + 11, 4, { align: 'center', color: ink });
-    drawRacerArt(c, RACERS[row.idx], x + 98, y + 26, 40, { color: INK, fill: RACERS[row.idx].color, mini: true, t: 0 });
-    blockText(c, RACERS[row.idx].name, x + 140, y + 18, 2, { color: ink });
-    blockText(c, fmtTime(row.time), x + 470, y + 18, 2, { align: 'right', color: me ? INK : '#C8C8D0' });
-    if (cup.mode === 'cup' && !res.dnq) blockText(c, '+' + row.pts, x + 620, y + 15, 3, { align: 'right', color: me ? INK : CYN });
-  });
-  // splat score breakdown, counting up
-  const px0 = 740;
-  plate(c, px0 - 16, 106, W - 60 - px0 + 32, 360);
-  hudText(c, 'SPLAT SCORE', px0, 120, 3, YEL);
+  const L = LEVELS[res.levelIdx];
+  hudText(c, res.pass ? (L.boss ? 'STAIN SUPREME!' : 'QUOTA SMASHED!') : (L.boss ? 'TIME UP' : 'REJECTED'), 60, 30, 6, res.pass ? YEL : RED);
+  hudText(c, (L.boss ? 'FINAL BOSS' : 'LEVEL ' + (res.levelIdx + 1) + '/5') + ' · ' + L.name + ' · ' + DIFFS[game.diff], 60, 82, 2, CYN);
+  // the score breakdown, line by line, counting up
+  const px0 = 60, pw = 640;
+  plate(c, px0 - 16, 108, pw + 32, 64 + res.lines.length * 34 + 70);
   res.lines.forEach((ln, i) => {
-    const y = 156 + i * 30;
-    const a = clamp((t - 0.4 - i * 0.12) / 0.2, 0, 1);
+    const y = 126 + i * 34;
+    const a = clamp((t - 0.25 - i * 0.12) / 0.2, 0, 1);
     c.globalAlpha = a;
     blockText(c, ln[0], px0, y, 2, { color: WHT });
-    blockText(c, '+' + ln[1], W - 60, y, 2, { align: 'right', color: ln[1] ? CYN : '#5a5a66' });
+    const v = ln[1];
+    blockText(c, (v < 0 ? '-' : '+') + fmtScore(Math.abs(v)), px0 + pw, y, 2, { align: 'right', color: v < 0 ? RED : v ? GOO_C : '#5a5a66' });
     c.globalAlpha = 1;
   });
-  const shown = Math.round(res.raceScore * clamp((t - 0.5) / 1.2, 0, 1));
-  c.fillStyle = PNK; c.fillRect(px0, 156 + res.lines.length * 30 - 4, W - 60 - px0, 2);
-  blockText(c, 'RACE TOTAL', px0, 156 + res.lines.length * 30 + 14, 2, { color: CYN });
-  hudText(c, String(shown), W - 60, 156 + res.lines.length * 30 + 6, 7, YEL, 'right');
-  if (res.newBestRace && !res.dnq && t > 1.6) {
-    c.save(); c.translate(px0 + 112, 512); c.rotate(-0.12);
-    const s = 1 + Math.max(0, 0.4 - (t - 1.6)) * 2;
-    c.scale(s, s);
-    c.fillStyle = INK; c.fillRect(-106, -22, 220, 52);
-    c.fillStyle = PNK; c.fillRect(-112, -28, 220, 52);
-    blockText(c, 'NEW BEST!', -2, -16, 4, { align: 'center', color: WHT });
+  const yT = 126 + res.lines.length * 34 + 6;
+  c.fillStyle = PNK; c.fillRect(px0, yT, pw, 3);
+  const shown = Math.round(res.score * clamp((t - 0.5) / 1.1, 0, 1));
+  blockText(c, 'LEVEL SCORE', px0, yT + 22, 2, { color: CYN });
+  hudText(c, fmtScore(shown), px0 + pw, yT + 14, 7, YEL, 'right');
+  if (!L.boss) {
+    const k = clamp(res.score / Math.max(1, res.quota), 0, 3);
+    blockText(c, 'QUOTA ' + fmtScore(res.quota) + ' · x' + k.toFixed(2), px0, yT + 46, 2, { color: res.pass ? GOO_C : RED });
+  } else blockText(c, res.pass ? 'GRADED ON TIME LEFT' : 'HE IS STILL SPOTLESS', px0, yT + 46, 2, { color: res.pass ? GOO_C : RED });
+  // the grade stamp slams down once the score has counted
+  if (t > 1.6) drawGradeStamp(c, 960, 250, res.grade, t - 1.6, 1);
+  if (res.newBest && res.pass && t > 2.0) {
+    c.save(); c.translate(960, 400); c.rotate(-0.08);
+    c.fillStyle = INK; c.fillRect(-106, -18, 220, 44);
+    c.fillStyle = PNK; c.fillRect(-112, -24, 220, 44);
+    blockText(c, 'NEW BEST!', -2, -14, 4, { align: 'center', color: WHT });
     c.restore();
   }
-  // mini standings
-  if (cup.mode === 'cup' && !res.dnq) {
-    const st = cupStandings().slice(0, 4);
-    plate(c, px0 + 250, 476, W - 60 - px0 - 234, 102, CYN);
-    blockText(c, 'CUP POINTS', px0 + 262, 484, 2, { color: CYN });
-    st.forEach((idx, i) => blockText(c, (i + 1) + ' ' + RACERS[idx].name.split(' ').pop() + ' ' + cup.pts[idx], px0 + 262, 503 + i * 18, 2, { color: idx === game.racer ? YEL : WHT }));
+  // run so far
+  const run = game.run;
+  if (run && run.mode === 'campaign') {
+    plate(c, 780, 452, 440, 90, CYN);
+    blockText(c, 'RUN TOTAL ' + fmtScore(run.total) + ' · CONTINUES ' + run.continues, 800, 466, 2, { color: WHT });
+    LEVELS.forEach((lv, i) => drawGradeBadge(c, 816 + i * 66, 512, 20, run.grades[i] || null));
   }
-  const opts = resultOptions(res, cup);
-  opts.forEach((o, i) => {
-    let label = o.label;
-    if (o.id === 'next' && cup.race < cup.tracks.length - 1) label = 'NEXT: ' + TRACKS[cup.tracks[cup.race + 1]].name + ' (' + (cup.race + 2) + '/5)';
-    drawButton(c, o.id, label, px0, 584 + i * 56, W - 60 - px0, 46, game.resMenu.i === i, { px: 2 });
+  const opts = resultOptions(res);
+  opts.forEach((o, i) => drawButton(c, o.id, o.label, 780, 566 + i * 54, 440, 44, game.resMenu.i === i, { px: 2 }));
+}
+
+// The end of a full run: every stage's score and grade, the total and the run grade.
+function drawFinal(c, t) {
+  drawSpaceBackdrop(c, t);
+  const run = game.run || { scores: [], grades: [], total: 0, newHigh: false };
+  blockText(c, 'RUN COMPLETE!', W / 2, 26, 7, { align: 'center', color: YEL, outline: 5, outlineColor: INK, shadow: 10, shadowColor: PNK });
+  hudText(c, 'MISTER SPOTLESS IS FILTHY. THE WORLD IS PAINTED.', W / 2, 96, 2, CREAM, 'center');
+  plate(c, 60, 132, 640, LEVELS.length * 62 + 120);
+  LEVELS.forEach((L, i) => {
+    const y = 150 + i * 62;
+    const k = smooth01(clamp((t - i * 0.15) / 0.3, 0, 1));
+    c.save(); c.translate((1 - k) * -500, 0);
+    blockText(c, L.boss ? 'BOSS' : String(i + 1), 84, y + 14, 3, { color: L.boss ? RED : CYN });
+    blockText(c, L.name, 170, y + 16, 3, { color: WHT });
+    blockText(c, fmtScore(run.scores[i] || 0), 590, y + 16, 3, { align: 'right', color: YEL });
+    drawGradeBadge(c, 646, y + 26, 22, run.grades[i] || null);
+    c.restore();
   });
-}
-
-function drawStandings(c, t) {
-  const cup = game.cup;
-  hudText(c, 'CUP STANDINGS', W / 2, 40, 6, YEL, 'center');
-  hudText(c, 'AFTER RACE ' + (cup.race + 1) + ' OF 5', W / 2, 96, 2, CYN, 'center');
-  const st = cupStandings();
-  const maxPts = Math.max(15, ...cup.pts);
-  plate(c, 160, 126, 960, 8 * 56 + 20);
-  st.forEach((idx, i) => {
-    const y = 140 + i * 56;
-    const me = idx === game.racer;
-    blockText(c, String(i + 1), 210, y + 10, 4, { align: 'right', color: me ? YEL : WHT });
-    drawRacerArt(c, RACERS[idx], 262, y + 22, 40, { color: INK, fill: RACERS[idx].color, mini: true, t: 0 });
-    blockText(c, RACERS[idx].name, 300, y + 14, 2, { color: me ? YEL : WHT });
-    const bw = (cup.pts[idx] / maxPts) * 480 * smooth01(clamp((t - i * 0.05) / 0.6, 0, 1));
-    c.fillStyle = INK; c.fillRect(538, y + 6, bw + 4, 30);
-    c.fillStyle = me ? YEL : RACERS[idx].color; c.fillRect(540, y + 8, bw, 26);
-    blockText(c, String(cup.pts[idx]), 540 + bw + 14, y + 12, 3, { color: WHT });
-  });
-  const next = TRACKS[cup.tracks[cup.race + 1]];
-  drawButton(c, 'next', 'NEXT: ' + next.name, W / 2 - 240, 610, 480, 50, true, { px: 3 });
-}
-
-function drawTrophy(c, x, y, s, tier) {
-  // tier 3 gold, 2 silver, 1 bronze, 0 empty slot
-  c.save(); c.translate(x, y);
-  c.lineWidth = Math.max(2, s * 0.08);
-  c.strokeStyle = tier ? '#fff' : '#3a3a3a';
-  c.fillStyle = tier === 3 ? '#fff' : tier === 2 ? '#909090' : tier === 1 ? '#585858' : '#000';
-  c.beginPath(); c.moveTo(-s * 0.4, -s * 0.5); c.lineTo(s * 0.4, -s * 0.5); c.lineTo(s * 0.3, -s * 0.05); c.quadraticCurveTo(0, s * 0.2, -s * 0.3, -s * 0.05); c.closePath(); c.fill(); c.stroke();
-  c.beginPath(); c.arc(-s * 0.42, -s * 0.3, s * 0.14, Math.PI * 0.5, Math.PI * 1.5); c.arc(s * 0.42, -s * 0.3, s * 0.14, -Math.PI * 0.5, Math.PI * 0.5); c.stroke();
-  c.fillRect(-s * 0.06, s * 0.1, s * 0.12, s * 0.22); c.strokeRect(-s * 0.06, s * 0.1, s * 0.12, s * 0.22);
-  c.fillRect(-s * 0.28, s * 0.32, s * 0.56, s * 0.14); c.strokeRect(-s * 0.28, s * 0.32, s * 0.56, s * 0.14);
-  c.restore();
-}
-
-function drawStarfield(c, t) {
-  c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
-  const rng = mulberry32(55);
-  c.fillStyle = '#fff';
-  for (let i = 0; i < 180; i++) {
-    const x = rng() * W, y = rng() * H, z = rng();
-    c.globalAlpha = 0.2 + z * 0.8;
-    const s = z > 0.85 ? 3 : 2;
-    c.fillRect((x - t * 20 * z + W) % W, y, s, s);
+  const yT = 150 + LEVELS.length * 62 + 6;
+  c.fillStyle = PNK; c.fillRect(84, yT, 590, 3);
+  blockText(c, 'TOTAL', 84, yT + 24, 3, { color: CYN });
+  hudText(c, fmtScore(Math.round(run.total * clamp((t - 0.9) / 1.2, 0, 1))), 674, yT + 16, 7, YEL, 'right');
+  // your ship, gooed and proud, and the run grade
+  drawShip(c, RACERS[game.racer], 990, 310 + Math.sin(t * 2) * 8, 250, { t, thrust: 1, speed: true, flap: Math.sin(t * 5) > 0.7 ? 1 : 0 });
+  if (t > 2.0) drawGradeStamp(c, 990, 500, runGrade(), t - 2.0, 0.8);
+  if (run.newHigh && t > 2.4) {
+    c.save(); c.translate(990, 176); c.rotate(-0.06);
+    c.fillStyle = INK; c.fillRect(-150, -18, 310, 44);
+    c.fillStyle = CYN; c.fillRect(-156, -24, 310, 44);
+    blockText(c, 'NEW HIGH SCORE!', -2, -14, 3, { align: 'center', color: INK });
+    c.restore();
   }
-  c.globalAlpha = 1;
+  drawButton(c, 'again', 'PLAY AGAIN', 60, 640, 300, 46, game.finMenu.i === 0, { px: 3 });
+  drawButton(c, 'title', 'TITLE', 380, 640, 300, 46, game.finMenu.i === 1, { px: 3 });
 }
 
-// The podium floats in the Cosmic Dumpster: airglow sky, confetti stars, the trash planet, the duck.
+// The final card's backdrop: the Cosmic Dumpster's airglow sky, confetti stars, planet and duck.
 function drawSpaceBackdrop(c, t) {
   const g = c.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, '#050A2E'); g.addColorStop(0.6, '#1B1464'); g.addColorStop(1, '#0B5D7A');
@@ -485,67 +530,15 @@ function drawSpaceBackdrop(c, t) {
   drawTrashPlanet(c, 0, t);
   drawDuckMoon(c, 0, t);
   c.restore();
-}
-
-function drawPodium(c, t) {
-  drawSpaceBackdrop(c, t);
-  const cup = game.cup;
-  const st = cupStandings();
-  const place = st.indexOf(game.racer);
-  blockText(c, place === 0 ? 'CHAMPION!' : place < 3 ? 'ON THE PODIUM!' : 'PARTICIPATION STICKER', W / 2, 30, 7, { align: 'center', color: YEL, outline: 5, outlineColor: INK, shadow: 10, shadowColor: PNK });
-  // podium blocks: 2 | 1 | 3, in the three neons
-  const cx = 470;
-  // the podium: three dumpsters stacked in gold, silver and bronze
-  const blocks = [[1, cx - 190, 150, '#D9DDEA'], [0, cx, 220, '#FFC21A'], [2, cx + 190, 110, '#FF8A3D']];
-  for (const [rank, x, h, colr] of blocks) {
-    const y = 620 - h;
-    c.fillStyle = INK; c.fillRect(x - 81, y + 6, 170, h);
-    c.fillStyle = colr; c.fillRect(x - 85, y, 170, h);
-    strokeBox(c, x - 85, y, 170, h, 4, INK);
-    c.fillStyle = INK; c.fillRect(x - 92, y - 4, 184, 12);                       // the lid
-    for (let k = 0; k < 4; k++) c.fillRect(x - 60 + k * 40, y + h - 26, 8, 14);  // ridges
-    blockText(c, String(rank + 1), x, y + 26, 8, { align: 'center', color: INK });
-    const idx = st[rank];
-    const bob = Math.sin(t * 3 + rank) * 6;
-    drawRacerArt(c, RACERS[idx], x, y - 70 + bob, rank === 0 ? 130 : 108, { color: INK, fill: RACERS[idx].color, flap: Math.sin(t * 6 + rank) > 0.7 ? 1 : 0, t, splats: rank === 1 && idx !== game.racer ? [{ x: 0.1, y: -0.2, seed: 5, t: 4 }] : null });
-    hudText(c, RACERS[idx].name, x, 640, 2, idx === game.racer ? YEL : WHT, 'center');
-  }
-  if (place === 0) drawTrophy(c, cx, 200 + Math.sin(t * 2) * 6, 110, 3);
-  // goo confetti
+  // goo confetti falling over everything
   const rng = mulberry32(9);
-  c.fillStyle = GOO_C;
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < 40; i++) {
     const x = rng() * W, sp = 40 + rng() * 80, y = (rng() * H + t * sp) % (H + 40) - 20;
-    const s = 4 + rng() * 6;
-    c.save(); c.translate(x + Math.sin(t * 2 + i) * 12, y); c.rotate(t * 3 + i); c.fillRect(-s / 2, -s / 2, s, s * 0.6); c.restore();
+    gooBlob(c, x + Math.sin(t * 2 + i) * 12, y, 4 + rng() * 5, i, t, ['#7CFF3A', '#FF4FD8', '#FFC21A', '#19E0D0'][i % 4]);
   }
-  // standings column
-  const sx0 = 840;
-  plate(c, sx0 - 22, 124, 428, 410);
-  hudText(c, 'FINAL STANDINGS', sx0, 140, 3, YEL);
-  st.forEach((idx, i) => {
-    const y = 180 + i * 29;
-    const me = idx === game.racer;
-    if (me) { c.fillStyle = YEL; c.fillRect(sx0 - 8, y - 6, 400, 26); }
-    else { c.fillStyle = RACERS[idx].color; c.fillRect(sx0 - 8, y - 4, 4, 20); }
-    blockText(c, (i + 1) + '  ' + RACERS[idx].name, sx0, y, 2, { color: me ? INK : WHT });
-    blockText(c, String(cup.pts[idx]), sx0 + 380, y, 2, { align: 'right', color: me ? INK : CYN });
-  });
-  blockText(c, 'CUP SCORE', sx0, 420, 2, { color: CYN });
-  hudText(c, cup.score.toLocaleString('en-US'), sx0, 440, 6, YEL);
-  blockText(c, 'SPLATS x' + cup.splats + '   RETRIES LEFT ' + cup.tokens, sx0, 494, 2, { color: WHT });
-  blockText(c, 'BEST LAP ' + (cup.bestLap ? fmtTime(cup.bestLap) : '-'), sx0, 516, 2, { color: WHT });
-  if (cup.unlocked || (SHOT && place < 3)) {
-    c.fillStyle = INK; c.fillRect(sx0 - 4, 546, 400, 32);
-    c.fillStyle = CYN; c.fillRect(sx0 - 8, 542, 400, 32);
-    blockText(c, 'REGLOOP CUP UNLOCKED!', sx0 + 192, 551, 2, { align: 'center', color: INK });
-  }
-  drawButton(c, 'again', 'PLAY AGAIN', sx0 - 8, 590, 190, 44, game.podMenu.i === 0, { px: 2 });
-  drawButton(c, 'title', 'TITLE', sx0 + 202, 590, 190, 44, game.podMenu.i === 1, { px: 2 });
-  hudText(c, 'ENTER: PLAY AGAIN', sx0 + 192, 650, 2, CYN, 'center');
 }
 
-// Game over: a Freezer Burn white-out, your racer frozen solid in an ice cube.
+// Game over: a white-out, your ship frozen solid in an ice cube.
 function drawGameOver(c, t) {
   const g = c.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, '#FFFFFF'); g.addColorStop(0.5, '#CFF3FF'); g.addColorStop(1, '#7FC8FF');
@@ -554,36 +547,38 @@ function drawGameOver(c, t) {
   c.fillStyle = '#FFFFFF';
   for (let i = 0; i < 90; i++) { const x = (rng() * W + t * 40 * (0.5 + rng())) % W, y = (rng() * H + t * 70 * (0.5 + rng())) % H; c.fillRect(x, y, 4, 4); }
   blockText(c, 'GAME OVER', W / 2, 70, 12, { align: 'center', color: '#2F6BD9', outline: 6, outlineColor: INK, shadow: 10, shadowColor: '#FFFFFF' });
-  hudText(c, 'YOUR CUP RUNNETH OVER. WITH FAILURE.', W / 2, 180, 3, CREAM, 'center');
+  hudText(c, 'OUT OF CONTINUES. THE WORLD STAYS SPOTLESS.', W / 2, 180, 3, CREAM, 'center');
   const x = W / 2, y = 400;
   c.save(); c.translate(x, y); c.rotate(-0.06);
-  drawRacerArt(c, RACERS[game.racer], 0, 6, 130, { color: INK, fill: RACERS[game.racer].color, t: 0 });
+  drawShip(c, RACERS[game.racer], 0, 6, 150, { t: 0 });
   c.beginPath(); c.roundRect(-120, -110, 240, 230, 22);
   c.fillStyle = 'rgba(190,235,255,0.55)'; c.fill();
   c.lineWidth = 8; c.strokeStyle = INK; c.stroke();
   c.lineWidth = 4; c.strokeStyle = '#FFFFFF'; c.stroke();
   c.fillStyle = 'rgba(255,255,255,0.75)'; c.fillRect(-96, -88, 26, 120); c.fillRect(-60, -88, 12, 60);
   c.restore();
-  drawButton(c, 'retry', 'RETRY CUP', W / 2 - 250, 600, 240, 50, game.goMenu.i === 0);
+  drawButton(c, 'retry', 'NEW RUN', W / 2 - 250, 600, 240, 50, game.goMenu.i === 0);
   drawButton(c, 'title', 'TITLE', W / 2 + 10, 600, 240, 50, game.goMenu.i === 1);
 }
 
-
-// ---- PAUSE overlay inside the race
+// ---- PAUSE overlay inside a level
 const PAUSE_ITEMS = ['resume', 'restart', 'quit'];
 function togglePause() {
   if (game.scene !== 'race') return;
   game.paused = !game.paused;
   game.pauseMenu.i = 0;
   MUSIC.duck = game.paused ? 0.45 : 1;
+  VOICE.stop();
   sfx.uiMove();
 }
 function onBlurPause() { if (game.scene === 'race' && !game.paused && !SHOT) togglePause(); }
-function restartCost() { return game.cup && game.cup.mode === 'cup' && world.player.dist > TRACK.L; }
-function restartRace() {
+// Restarting a level in a full run costs a continue once you are a quarter of the way in.
+function restartCost() { return game.run && game.run.mode === 'campaign' && world.player.dist > world.length * 0.25; }
+function restartLevel() {
   if (game.scene !== 'race' || game.wipe) return;
-  if (restartCost()) { if (game.cup.tokens <= 0) { popup('NO RETRIES LEFT', 'mid'); return; } game.cup.tokens--; }
-  goTo('intro', () => startRaceScene(world.trackIdx));
+  if (restartCost()) { if (game.run.continues <= 0) { popup('NO CONTINUES LEFT', 'mid'); return; } game.run.continues--; }
+  const idx = world.levelIdx;
+  goTo('intro', () => startLevelScene(idx));
 }
 function pauseUpdate() {
   const sel = menuNav(game.pauseMenu, PAUSE_ITEMS);
@@ -591,7 +586,7 @@ function pauseUpdate() {
   const id = PAUSE_ITEMS[sel];
   sfx.uiSelect();
   if (id === 'resume') togglePause();
-  else if (id === 'restart') { game.paused = false; MUSIC.duck = 1; restartRace(); }
+  else if (id === 'restart') { game.paused = false; MUSIC.duck = 1; restartLevel(); }
   else if (id === 'quit') { game.paused = false; MUSIC.duck = 1; goTo('title'); }
 }
 function drawPause(c) {
@@ -599,7 +594,7 @@ function drawPause(c) {
   hudText(c, 'PAUSED', W / 2, 150, 10, CREAM, 'center');
   const labels = {
     resume: 'RESUME',
-    restart: 'RESTART RACE' + (restartCost() ? ' (1 RETRY)' : ''),
+    restart: 'RESTART LEVEL' + (restartCost() ? ' (1 CONTINUE)' : ''),
     quit: 'QUIT TO TITLE',
   };
   PAUSE_ITEMS.forEach((id, i) => drawButton(c, id, labels[id], W / 2 - 220, 300 + i * 62, 440, 48, game.pauseMenu.i === i));

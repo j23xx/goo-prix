@@ -65,7 +65,7 @@ function wireShell() {
     const b = document.getElementById(id);
     b.addEventListener('click', () => { AU.resume(); fn(); b.blur(); canvas.focus(); });
   };
-  btn('b-restart', () => { if (game.scene === 'race') restartRace(); else if (game.scene !== 'title') goTo('title'); });
+  btn('b-restart', () => { if (game.scene === 'race') restartLevel(); else if (game.scene !== 'title') goTo('title'); });
   btn('b-pause', () => togglePause());
   btn('b-sound', () => AU.setMuted(!save.muted));
   btn('b-full', () => {

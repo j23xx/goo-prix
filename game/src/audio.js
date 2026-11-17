@@ -167,6 +167,7 @@ const MUSIC = {
     this.song = song; this.step = 0; this.tempoMul = 1; this.transpose = 0;
     if (!AU.ready) return;
     this.nextTime = AU.now() + 0.08;
+    this.t0 = this.nextTime;
     if (!this.timer) this.timer = setInterval(() => this.tick(), 25);
   },
   wake() { if (this.song && AU.ready && !this.timer) this.play(this.song); },

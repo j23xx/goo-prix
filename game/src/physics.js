@@ -22,7 +22,7 @@ function makeRacer(defIndex, isPlayer, slot) {
     ai: { react: 0.1, noiseU: 0, noiseV: 0, noiseT: 0, shootT: rnd(0.5, 1.5), itemT: rnd(1, 3), skill: 0.7, aimT: 0 },
   };
 }
-function cruiseSpeed() { return CFG.cruise[game.diff] * (TRACK.mirror < 0 ? 1.08 : 1); }
+function cruiseSpeed() { return world && world.level ? levelSpeed(world.level) : 60; }
 
 function giveBoost(r, mul, time) {
   if (mul >= r.boostMul || r.boostT <= 0) { r.boostMul = mul; r.boostT = time; }
@@ -70,6 +70,8 @@ function near(r) { return !world.attract && Math.abs(gap(world.player.dist, r.di
 function bonk(r, th) {
   if (r.invuln > 0 || r.ghost > 0) return;
   if (r.shield > 0) { popShield(r); return; }
+  // a knock costs points: walls cost the most, red hazards a little less
+  if (r.isPlayer) knock(th && (th.kind === 'gate' || th.kind === 'pillars' || th.kind === 'blocks') ? 'wall' : 'hazard', 'BONK');
   r.speed *= CFG.bonkMul;
   r.stun = CFG.stun; r.flapLock = CFG.flapLock; r.invuln = CFG.invuln;
   r.bonks++; r.lapBonks++;
@@ -117,17 +119,17 @@ function crossThing(r, th) {
       if (r.ghost > 0) break;
       const res = thingBlocks(th, r.u, r.v, t);
       if (res === 'bonk') bonk(r, th);
-      else if (res === 'goop') { if (goopRacer(r, null, 1.5, 0.6) && r.isPlayer) popup('GOOPED!', 'mid'); }
+      else if (res === 'goop') { if (r.isPlayer && r.invuln <= 0) { knock('goop', 'GOOPED'); goopRacer(r, null, 1.5, 0.6); popup('GOOPED!', 'mid'); } }
       else if (r.isPlayer && (th.kind === 'gate' || th.kind === 'pillars' || th.kind === 'rotor' || th.kind === 'laser')) {
         world.gateStreak++; sfx.gate(world.gateStreak); r.gatesClean++;
-        if (world.gateStreak % 10 === 0) { popup(world.gateStreak + ' CLEAN!', 'mid'); addScore(r, 100, 'stunt'); }
+        if (th.kind === 'gate') threadWindow(th, r.u, r.v);
       }
       break;
     }
     case 'ring':
       if ((r.u - th.u) ** 2 + (r.v - th.v) ** 2 < th.r * th.r) {
         giveBoost(r, CFG.ringMul, CFG.ringTime);
-        if (r.isPlayer) { sfx.ring(); popup('BOOST!', 'small'); addScore(r, 25, 'stunt'); burst(r.dist + 2, th.u, th.v, 10, 'spark'); }
+        if (r.isPlayer) { sfx.ring(); popup('BOOST!', 'small'); award(25); burst(r.dist + 2, th.u, th.v, 10, 'spark'); }
       }
       break;
     case 'cube':
@@ -142,7 +144,7 @@ function crossThing(r, th) {
       if (!(th.back > 0) && Math.abs(r.u - th.u) < magnet && Math.abs(r.v - th.v) < magnet) {
         th.back = 6;
         r.coins = Math.min(99, r.coins + 1);
-        if (r.isPlayer) { world.coinStreak++; sfx.coin(world.coinStreak); addScore(r, 10, 'coin'); }
+        if (r.isPlayer) { world.coinStreak++; sfx.coin(world.coinStreak); award(10); }
       }
       break;
     }
@@ -176,40 +178,48 @@ function updateRacer(r, ctl, dt) {
     if (r.diveT >= CFG.swoopTiers[0][0]) { r.swoopReady = CFG.swoopWindow; r.swoopTier = r.diveT >= CFG.swoopTiers[1][0] ? 1 : 0; }
     r.diveT = 0;
   }
+  // the level's twist bends the rules: gravity can flip, or vanish altogether (zero-G thrust)
+  const twist = world.level && !world.attract ? world.level.twist : null;
+  const zeroG = twist === 'zerog';
+  const gs = world.gsign || 1;
   let g = CFG.gravity * (lowG ? 0.55 : 1) * (1 + clamp(cyDD(s) * r.speed * r.speed * 0.02, -0.1, 0.1));
   if (diving) g += CFG.diveG;
-  r.vv -= g * dt;
+  if (zeroG) { r.vv += (ctl.thrust || 0) * 40 * dt; r.vv = damp(r.vv, 0, 1.4, dt); }
+  else r.vv -= g * gs * dt;
   const up = zoneAt(s, r.u, 'updraft');
   if (up) r.vv += up.lift * dt;
-  if (ctl.flap) r.flapBuf = CFG.flapBuffer;
+  if (ctl.flap && !zeroG) r.flapBuf = CFG.flapBuffer;
   if (r.flapBuf > 0 && r.flapLock <= 0 && r.stalled <= 0) {
-    r.vv = CFG.flapV * st.flap * (r.goop > 0 ? CFG.goopFlap : 1) * (lowG ? 0.8 : 1);
+    r.vv = CFG.flapV * st.flap * (r.goop > 0 ? CFG.goopFlap : 1) * (lowG ? 0.8 : 1) * gs;
     r.flapBuf = 0; r.flapAnim = 1;
     if (r.swoopReady > 0) {
       const tier = CFG.swoopTiers[r.swoopTier];
       giveBoost(r, tier[1], tier[2]);
       r.swoopReady = 0; r.swoops++;
-      if (r.isPlayer) { sfx.swoop(r.swoopTier); popup(r.swoopTier ? 'MEGA SWOOP!' : 'SWOOP!', r.swoopTier ? 'mid' : 'small'); addScore(r, r.swoopTier ? 50 : 25, 'swoop'); }
+      if (r.isPlayer) { sfx.swoop(r.swoopTier); popup(r.swoopTier ? 'MEGA SWOOP!' : 'SWOOP!', r.swoopTier ? 'mid' : 'small'); award(r.swoopTier ? 50 : 25); }
     }
     if (r.isPlayer) sfx.flap(1 + (r.idx - 3) * 0.04);
   }
   r.flapBuf -= dt;
-  r.vv = Math.max(r.vv, -(diving ? CFG.diveMaxFall : CFG.maxFall));
+  const fall = diving ? CFG.diveMaxFall : CFG.maxFall;
+  r.vv = gs > 0 ? Math.max(r.vv, -fall) : Math.min(r.vv, fall);
+  if (zeroG) r.vv = clamp(r.vv, -14, 14);
   r.v += r.vv * dt;
   const lo = 0.7, hi = CFG.ceil - 0.7;
   if (r.v < lo) {
     r.v = lo;
-    if (r.vv < 0) { r.vv = 7; r.floorSlow = 0.3; if (r.isPlayer) { burst(r.dist + 1.5, r.u, 0.2, 6, 'dust'); sfx.scrape(); } }
+    if (r.vv < 0) { r.vv = gs > 0 && !zeroG ? 7 : 2; r.floorSlow = 0.3; if (r.isPlayer) { burst(r.dist + 1.5, r.u, 0.2, 6, 'dust'); sfx.scrape(); } }
   }
-  if (r.v > hi) { r.v = hi; if (r.vv > 0) { r.vv = -4; r.speed *= 0.9; } }
+  if (r.v > hi) { r.v = hi; if (r.vv > 0) { r.vv = gs < 0 && !zeroG ? -7 : -3; r.speed *= 0.95; } }
   // ---- lateral: steering, curve push, crosswind and the side rails
   let steer = 0;
   if (r.stun <= 0) {
     if (ctl.targetU != null) steer = clamp((ctl.targetU - r.u) * 0.55 - r.vu * 0.07, -1, 1);
     else steer = ctl.steer || 0;
   }
-  if (steer) r.vu += steer * CFG.latAccel * dt;
-  else r.vu = damp(r.vu, 0, CFG.latDamp, dt);
+  if (steer) r.vu += steer * CFG.latAccel * st.steer * dt;
+  else r.vu = damp(r.vu, 0, twist === 'whiteout' ? 2.5 : CFG.latDamp, dt);   // White-Out: steering slides
+  if (world.sideT > 0) r.vu += world.sideDir * 22 * dt;                       // the lamp tips sideways
   r.vu += clamp(-cxDD(s) * r.speed * r.speed * 0.5, -CFG.curvePushMax, CFG.curvePushMax) * dt;
   const wind = zoneAt(s, r.u, 'wind');
   if (wind) r.vu += wind.dir * wind.accel * dt;
@@ -230,14 +240,13 @@ function updateRacer(r, ctl, dt) {
   if (r.floorSlow > 0) target *= 0.8;
   if (r.slipAfter > 0) target *= CFG.slipMul;
   if (r.stun > 0) target *= 0.5;
-  if (!r.isPlayer && !finished) target *= rubberBand(r);
   if (finished) target = cruiseSpeed() * 0.85;
   if (world.state === 'countdown') target = 0;
   r.speed = r.speed < target ? Math.min(target, r.speed + CFG.accel * dt * (r.boostT > 0 ? 2.5 : 1)) : Math.max(target, r.speed - CFG.decel * dt);
   r.dist += r.speed * dt;
   processCrossings(r);
   // ---- goo tank and the auto-gun
-  r.tank = Math.min(CFG.tank, r.tank + CFG.tankRegen * st.goo * dt);
+  r.tank = Math.min(CFG.tank, r.tank + CFG.tankRegen * st.goo * (world.boss ? 1.6 : 1) * dt);   // the boss fight runs hot
   r.shotCd = Math.max(0, r.shotCd - dt);
   if (world.state === 'run') updateAutogun(r, dt);
 }

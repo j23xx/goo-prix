@@ -1,27 +1,20 @@
-// GOO PRIX · src/items.js — Jelly-cube items and their effects.
+// GOO PRIX · src/items.js — Jelly-cube items and their effects on the targets.
 'use strict';
 
 // ============================================================================================
-// ITEMS — jelly-cube roulette (rank weighted), the eight items and their world entities
+// ITEMS — the jelly-cube roulette and the nine items: weapons aim at targets, the rest help you
 // ============================================================================================
 const ITEMS = {
   burp: { name: 'TURBO BURP', glyph: 'B' }, bazooka: { name: 'GOO BAZOOKA', glyph: 'Z' }, sock: { name: 'HOMING SOCK', glyph: 'S' },
-  balloon: { name: 'SLUDGE BALLOON', glyph: 'O' }, bubble: { name: 'BUBBLE WRAP', glyph: 'W' }, ghost: { name: 'GHOST PEPPER', glyph: 'G' },
-  geyser: { name: 'GOO GEYSER', glyph: 'Y' }, sneeze: { name: 'MEGA SNEEZE', glyph: 'X' },
-  autogun: { name: 'AUTO-GOO', glyph: 'A' }, bomb: { name: 'STUN BOMB', glyph: 'K' },
+  bubble: { name: 'BUBBLE WRAP', glyph: 'W' }, ghost: { name: 'GHOST PEPPER', glyph: 'G' }, geyser: { name: 'GOO GEYSER', glyph: 'Y' },
+  sneeze: { name: 'MEGA SNEEZE', glyph: 'X' }, autogun: { name: 'AUTO-GOO', glyph: 'A' }, bomb: { name: 'STUN BOMB', glyph: 'K' },
 };
-// Drop odds (%) by rank band: 1st, 2-3, 4-5, 6-8.
-const ODDS = {
-  balloon: [35, 20, 10, 5], bubble: [30, 20, 12, 8], geyser: [20, 15, 12, 10], burp: [10, 20, 22, 22],
-  bazooka: [5, 15, 18, 15], sock: [0, 10, 16, 15], ghost: [0, 0, 8, 15], sneeze: [0, 0, 2, 10],
-  autogun: [6, 12, 14, 14], bomb: [0, 6, 10, 12],
-};
+// Roll weights; the gold cube leaves out the two least exciting.
+const ODDS = { burp: 10, bazooka: 14, sock: 12, bubble: 12, ghost: 8, geyser: 12, sneeze: 7, autogun: 14, bomb: 11 };
 function startRoll(r, gold) {
-  const place = Math.min(7, r.place + (gold ? 2 : 0));
-  const band = place === 0 ? 0 : place <= 2 ? 1 : place <= 4 ? 2 : 3;
-  const table = Object.keys(ODDS).map((k) => [k, ODDS[k][band]]).filter((row) => row[1] > 0);
+  const table = Object.keys(ODDS).filter((k) => !gold || (k !== 'burp' && k !== 'bubble')).map((k) => [k, ODDS[k]]);
   r.rollItem = weighted(table);
-  r.roll = r.isPlayer ? 0.9 : 0.5;
+  r.roll = r.isPlayer ? 0.9 : 0.4;
   r.rollTick = 0;
 }
 
@@ -29,79 +22,62 @@ function useItem(r) {
   const it = r.item;
   if (!it || r.roll > 0) return;
   r.item = null;
-  const P = r.isPlayer;
+  const P = r.isPlayer && !world.attract;
+  const p = world.player;
   switch (it) {
     case 'burp':
       giveBoost(r, 1.6, 1.5);
-      for (const o of world.racers) { const d = gap(r.dist, o.dist); if (o !== r && d < 0 && d > -4 && Math.abs(o.u - r.u) < 4) { o.speed *= 0.6; o.vv += 6; } }
       burst(r.dist - 1, r.u, r.v, 16, 'dust');
-      if (P || near(r)) sfx.burp();
-      if (P) popup('BUUURP!', 'big');
+      if (P) { sfx.burp(); popup('BUUURP!', 'big'); say('Burp!', 1); }
       break;
     case 'bazooka': {
-      const tgt = aimTargetFor(r);
-      fireGlob(r, tgt ? tgt.u : r.u, tgt ? tgt.v : r.v, true);
-      if (P || near(r)) sfx.launch();
+      const tg = aimTargetFor(r);
+      fireGlob(r, tg ? tg.u : r.u, tg ? tg.v : r.v, true);
+      if (P) { sfx.launch(); say('Bazooka!', 1); }
       break;
     }
-    case 'sock': {
-      const ahead = r.place > 0 ? world.order[r.place - 1] : null;   // the racer one place ahead in the race
-      world.ents.push({ kind: 'sock', dist: r.dist + 2, u: r.u, v: r.v, target: ahead, owner: r, hp: 2, life: 9, vu: 0, vv: 0 });
-      if (P || near(r)) sfx.launch();
-      if (ahead && ahead.isPlayer) sfx.sock();
-      break;
-    }
-    case 'balloon':
-      world.ents.push({ kind: 'balloon', dist: r.dist - 3, u: r.u, v: r.v, owner: r, hp: 1, life: 20, phase: rnd(0, TAU) });
-      if (P) sfx.pop();
+    case 'sock':
+      world.ents.push({ kind: 'sock', dist: r.dist + 2, u: r.u, v: r.v, target: null, owner: r, hp: 3, life: 8, vu: 0, vv: 0, hits: 3 });
+      if (P) { sfx.launch(); popup('HOMING SOCK!', 'small'); }
       break;
     case 'bubble':
-      r.shield = 8;
+      r.shield = 10;
       if (P) { sfx.shield(); popup('BUBBLE WRAP!', 'small'); }
       break;
     case 'ghost':
-      r.ghost = 3;
+      r.ghost = 4;
       if (P) { sfx.swoop(1); popup('GHOST PEPPER!', 'mid'); }
       break;
     case 'geyser':
       r.geyser = 6; r.tank = CFG.tank;
       if (P) { sfx.itemGet(); popup('GOO GEYSER!', 'mid'); }
       break;
-    case 'sneeze':
-      for (const o of world.racers) {
-        if (o === r || o.dist < r.dist || o.dist - r.dist > 300) continue;
-        o.vv += rnd(-1, 1) > 0 ? 9 : -9; o.vu += rnd(-8, 8);
-        goopRacer(o, r, 1.2);
-        if (P) addScore(r, 100, 'item');
-      }
-      if (P || world.player.dist > r.dist) { world.flash = 0.08; shake(16); sfx.sneeze(); }
-      if (P) popup('AAAH-CHOO!', 'big');
+    case 'sneeze': {
+      // everything ahead within 120 u takes two hits
+      for (const tg of world.targets) { const d = gap(p.dist, tg.dist); if (d > 0 && d < 120) hitTarget(tg, 2, null); }
+      if (world.boss) bossDamage(6, null);
+      world.flash = 0.08; shake(16);
+      if (P) { sfx.sneeze(); popup('AAAH-CHOO!', 'big'); say('Ah choo!', 2); }
       break;
+    }
     case 'autogun':
-      // five seconds of free, automatic rapid fire at whoever is ahead
       r.autogun = 5; r.autoCd = 0;
-      if (P) { sfx.itemGet(); popup('AUTO-GOO!', 'mid'); }
+      if (P) { sfx.itemGet(); popup('AUTO-GOO!', 'mid'); say('Auto goo!', 2); }
       break;
     case 'bomb': {
-      // a shockwave: every other racer is stunned for a second (bubble wrap saves you)
+      // the stun bomb: a shockwave that knocks three hits off everything near, and stuns the boss
       world.blasts.push({ dist: r.dist, u: r.u, v: r.v, t: 0 });
-      for (const o of world.racers) {
-        if (o === r) continue;
-        if (o.shield > 0) { popShield(o); continue; }
-        o.stun = Math.max(o.stun, 1); o.flapLock = Math.max(o.flapLock, 0.6);
-        o.speed *= 0.55; o.vv += 4;
-        if (o.isPlayer) { popup('STUNNED!', 'big'); world.playerHitCd = 1.5; }
-      }
-      if (P) { popup('STUN BOMB!', 'big'); addScore(r, 300, 'item'); }
-      world.flash2 = 0.3;
-      shake(P ? 16 : 10);
-      sfx.bomb();
+      for (const tg of world.targets) { const d = gap(p.dist, tg.dist); if (d > -10 && d < 80) hitTarget(tg, 3, null); }
+      world.bolts.length = 0;
+      if (world.boss) { world.boss.stun = 2; bossDamage(5, null); }
+      world.flash2 = 0.3; shake(16); sfx.bomb();
+      if (P) { popup('STUN BOMB!', 'big'); say('Kaboom!', 2); }
       break;
     }
   }
 }
 
-// AUTO-GOO: while it runs, the racer sprays a glob at its target every 0.09 s for free.
+// AUTO-GOO: while it runs, the craft sprays a glob at its target every 0.09 s for free.
 function updateAutogun(r, dt) {
   if (!(r.autogun > 0)) return;
   r.autogun -= dt; r.autoCd -= dt;
@@ -111,52 +87,60 @@ function updateAutogun(r, dt) {
   fireGlob(r, t ? t.u : r.u, t ? t.v : r.v + 0.4, false, rnd(-1.5, 1.5), true);
 }
 
-// Nearest rival ahead within a forward cone (used by auto-aim and the bazooka).
+// The auto-aim: the best target inside a ~10 degree forward cone (or the boss's best weak point).
 function aimTargetFor(r) {
   let best = null;
-  for (const o of world.racers) {
-    if (o === r) continue;
+  if (r.isPlayer) {
+    // a bolt about to hit you is the most urgent target of all: goo knocks it out of the air
+    for (const b of world.bolts) {
+      const dd = gap(r.dist, b.dist);
+      if (b.life <= 0 || dd < 8 || dd > 34 || Math.abs(b.u - r.u) > 4 || Math.abs(b.v - r.v) > 4) continue;
+      if (!best || dd < best.dd) best = { b, dd };
+    }
+    if (best) return { u: best.b.u + best.b.vu * best.dd / CFG.globSpeed, v: best.b.v, dist: best.b.dist };
+  }
+  for (const o of world.targets) {
+    if (o.dead) continue;
     const dd = gap(r.dist, o.dist);
-    if (dd < 3 || dd > 70) continue;
+    if (dd < 3 || dd > 95) continue;
     const off = Math.hypot(o.u - r.u, o.v - r.v);
-    if (off > dd * 0.32 + 1.5) continue;
-    const score = dd + off * 4;
+    if (off > dd * 0.2 + 2) continue;
+    const score = dd + off * 3 - (o.cls === 'goldie' ? 30 : 0) - (o.cls === 'ace' ? 10 : 0);
     if (!best || score < best.score) best = { o, score };
+  }
+  if (!best && world.boss) {
+    const bp = bossAimPoint();
+    if (bp) return bp;
   }
   if (!best) return null;
   const o = best.o;
   const tt = gap(r.dist, o.dist) / CFG.globSpeed;
-  return { u: o.u + o.vu * tt, v: o.v + o.vv * tt * 0.5, o };
+  return { u: o.u + (o.cls === 'zipper' ? Math.cos(world.t * 3 + o.ph) * 18 * tt : 0), v: o.v, o };
 }
 
 function updateEnts(dt) {
   for (const e of world.ents) {
     e.life -= dt;
     if (e.kind === 'sock') {
-      const tg = e.target && !e.target.finished ? e.target : null;
-      const sp = tg ? Math.max(tg.speed * 1.5, 80) : 90;
-      e.dist += sp * dt;
-      if (tg) {
-        const d = gap(e.dist, tg.dist);
-        if (d < -2) e.dist += (d + 2);   // never overshoot: the sock waits just behind its victim
-        e.vu = damp(e.vu, (tg.u - e.u) * 4, 6, dt); e.vv = damp(e.vv, (tg.v - e.v) * 4, 6, dt);
-        e.u += e.vu * dt; e.v += e.vv * dt;
-        if (Math.abs(gap(e.dist, tg.dist)) < 1.6 && Math.abs(tg.u - e.u) < 1.6 && Math.abs(tg.v - e.v) < 1.6) {
-          hitRacer(tg, e.owner, 'sock'); e.life = 0;
-          burst(e.dist, e.u, e.v, 16, 'dust');
-        }
+      // a homing sock: picks the nearest live target ahead and chews through three of them
+      if (!e.target || e.target.dead) {
+        let best = null;
+        for (const o of world.targets) { const d = gap(e.dist, o.dist); if (!o.dead && d > 0 && d < 120 && (!best || d < best.d)) best = { o, d }; }
+        e.target = best ? best.o : null;
       }
-    } else if (e.kind === 'balloon') {
-      e.phase += dt;
-      e.uu = e.u + Math.sin(e.phase * 0.9) * 2;
-      for (const o of world.racers) {
-        if (o === e.owner && e.life > 19) continue;
-        if (Math.abs(gap(e.dist, o.dist)) < 1.5 && Math.abs(o.u - e.uu) < 1.6 && Math.abs(o.v - e.v) < 1.6) {
-          if (goopRacer(o, e.owner, 1.5, 0.5) && o.isPlayer) popup('SLUDGED!', 'mid');
-          e.life = 0; burst(e.dist, e.uu, e.v, 18, 'goo');
-          if (o.isPlayer || near(o)) sfx.pop();
-          break;
+      const tg = e.target;
+      e.dist += (tg ? 110 : 80) * dt;
+      if (tg) {
+        e.vu = damp(e.vu, (tg.u - e.u) * 5, 6, dt); e.vv = damp(e.vv, (tg.v - e.v) * 5, 6, dt);
+        e.u += e.vu * dt; e.v += e.vv * dt;
+        if (Math.abs(gap(e.dist, tg.dist)) < tg.r + 0.8 && Math.abs(tg.u - e.u) < tg.r + 0.8 && Math.abs(tg.v - e.v) < tg.r + 0.8) {
+          hitTarget(tg, 3, null); burst(e.dist, e.u, e.v, 12, 'dust');
+          e.hits--; e.target = null;
+          if (e.hits <= 0) e.life = 0;
         }
+      } else if (world.boss) {
+        const bp = bossAimPoint();
+        if (bp) { e.u = damp(e.u, bp.u, 3, dt); e.v = damp(e.v, bp.v, 3, dt); if (gap(e.dist, world.boss.dist) < 1) { bossDamage(4, null); e.life = 0; } }
       }
     }
     if (e.hp <= 0) e.life = 0;
@@ -165,24 +149,19 @@ function updateEnts(dt) {
 }
 
 function drawEnt(c, e, dz) {
-  projectDz(dz, e.kind === 'balloon' ? e.uu : e.u, e.v, PT);
-  const k = PT.k, lvl = fogLevel(dz);
+  projectDz(dz, e.u, e.v, PT);
+  const k = PT.k;
   if (e.kind === 'sock') {
-    // a stinky sock with fly wings: an L shape and two flicking wing lines
+    // a stinky sock with fly wings
     c.save(); c.translate(PT.x, PT.y);
     const s = Math.max(4, k * 0.9);
     c.strokeStyle = INK; c.fillStyle = col(WHT, dz); c.lineWidth = Math.max(2, s * 0.16);
     c.beginPath(); c.moveTo(-s * 0.3, -s); c.lineTo(s * 0.2, -s); c.lineTo(s * 0.2, s * 0.2); c.lineTo(s * 0.7, s * 0.2); c.lineTo(s * 0.7, s * 0.6); c.lineTo(-s * 0.3, s * 0.6); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = RED; c.fillRect(-s * 0.3, -s * 0.75, s * 0.5, s * 0.14);
     const w = Math.sin(world.t * 60) * s * 0.4;
     c.beginPath(); c.moveTo(-s * 0.3, -s * 0.6); c.lineTo(-s * 1.0, -s * 0.9 - w); c.moveTo(s * 0.2, -s * 0.6); c.lineTo(s * 0.9, -s * 0.9 - w); c.stroke();
     c.fillStyle = GOO_C; c.globalAlpha = 0.6;
     for (let i = 0; i < 3; i++) c.fillRect(-s * 0.5 + i * s * 0.4, -s * 1.5 - ((world.t * 2 + i * 0.3) % 1) * s, s * 0.12, s * 0.12);
     c.restore();
-  } else {
-    const r = Math.max(3, k * 1.2);
-    gooBlob(c, PT.x, PT.y, r, 7, world.t * 0.5, '#000');
-    c.strokeStyle = GOO_C; c.lineWidth = Math.max(1.5, r * 0.12); c.stroke();
-    c.beginPath(); c.moveTo(PT.x, PT.y + r); c.lineTo(PT.x, PT.y + r * 1.8); c.strokeStyle = GREYS[lvl]; c.lineWidth = 1.5; c.stroke();
-    gooBlob(c, PT.x - r * 0.3, PT.y - r * 0.3, r * 0.25, 2, world.t, '#fff');
   }
 }
