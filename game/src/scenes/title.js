@@ -1,49 +1,82 @@
 // GOO PRIX · src/scenes/title.js — The start screen: logo, START RUN, the other modes, and a live demo flight.
 'use strict';
 
-// The start screen: logo and premise, the three difficulties, one big START RUN, the other
-// modes, HOW A RUN GOES in four cards, how you win and lose, and every control as a key.
+// The start screen, built to read even as a thumbnail: on the left the logo, the pitch, the
+// three difficulties, one big START RUN, the other modes and HOW A RUN GOES; on the right the
+// key art, a ship hosing goo up at Mister Spotless; underneath, how you win and lose and the keys.
 const DIFF_RULES = ['SLOWER · QUOTAS -25%', 'THE GAME AS MEANT', 'FASTER · QUOTAS +25%'];
+const TITLE_LX = 352;   // the menu column's centre
 function drawTitle(c, t) {
   applyCamera();
   renderWorld(c);
-  groundWash(c, 0.88);
+  groundWash(c, 0.86);
+  drawTitleArt(c, 975, 262, t);
   const sel = TITLE_ITEMS[game.menu.i];
-  drawLogo(c, W / 2, 12, 12, t);
-  label(c, 'A FLAP-AND-SPLAT SCORE ATTACK', W / 2, 104, 22, AQUA, { align: 'center' });
-  label(c, 'FLY A GOO-FIRING SHIP THROUGH FIVE WORLDS THAT BREAK THEIR OWN RULES, THEN MAKE MISTER SPOTLESS FILTHY', W / 2, 132, 16, CREAM, { align: 'center' });
+  drawLogo(c, TITLE_LX, 20, 13, t);
+  label(c, 'A FLAP-AND-SPLAT SCORE ATTACK', TITLE_LX, 126, 27, AQUA, { align: 'center', outline: 3 });
+  label(c, '5 WORLDS · 12 MIX-INS · 8 SHIPS · 1 BOSS', TITLE_LX, 162, 19, CREAM, { align: 'center', outline: 3 });
   // the three difficulties
+  const cw = 184, x0 = TITLE_LX - (cw * 3 + 24) / 2;
   DIFFS.forEach((d, i) => {
-    const cw = 236, x = W / 2 - (cw * 3 + 28) / 2 + i * (cw + 14), y = 160, on = game.diff === i;
-    uiRect('diff' + i, x, y, cw, 58);
-    c.save(); c.beginPath(); c.roundRect(x, y, cw, 58, 10); c.fillStyle = on ? 'rgba(255,194,26,0.14)' : 'rgba(11,9,30,0.82)'; c.fill();
+    const x = x0 + i * (cw + 12), y = 196, on = game.diff === i;
+    uiRect('diff' + i, x, y, cw, 54);
+    c.save(); c.beginPath(); c.roundRect(x, y, cw, 54, 10); c.fillStyle = on ? 'rgba(255,194,26,0.16)' : 'rgba(11,9,30,0.85)'; c.fill();
     c.lineWidth = on ? 3 : 1.5; c.strokeStyle = on ? YEL : sel === 'diff' ? CREAM : 'rgba(255,246,224,0.25)'; c.stroke(); c.restore();
-    label(c, d, x + cw / 2, y + 7, 22, on ? YEL : CREAM, { align: 'center' });
-    label(c, DIFF_RULES[i], x + cw / 2, y + 34, 14, '#B9B4D8', { align: 'center' });
+    label(c, (on && sel === 'diff' ? '< ' : '') + d + (on && sel === 'diff' ? ' >' : ''), x + cw / 2, y + 6, 22, on ? YEL : CREAM, { align: 'center' });
+    label(c, DIFF_RULES[i], x + cw / 2, y + 33, 13, '#B9B4D8', { align: 'center', maxW: cw - 12 });
   });
-  if (sel === 'diff') label(c, '← →', W / 2 + 380, 178, 18, YEL);
-  keyButton(c, 'start', 'ENTER', 'START RUN', W / 2 - 280, 230, 560, 74, sel === 'start');
+  keyButton(c, 'start', 'ENTER', 'START RUN', x0, 266, cw * 3 + 24, 96, sel === 'start');
   const small = [['endless', 'ENDLESS SLOP'], ['practice', 'PRACTICE ' + (game.practiceLevel + 1) + ': ' + LEVELS[game.practiceLevel].name], ['howto', 'HOW TO PLAY']];
   small.forEach(([id, text], i) => {
-    const bw = 300, x = W / 2 - (bw * 3 + 24) / 2 + i * (bw + 12);
-    drawButton(c, id, '', x, 316, bw, 42, sel === id);
-    label(c, (sel === id && id === 'practice' ? '< ' : '') + text + (sel === id && id === 'practice' ? ' >' : ''), x + bw / 2, 327, 18, sel === id ? INK : CREAM, { align: 'center', maxW: bw - 16 });
+    const x = x0 + i * (cw + 12), arrows = sel === id && id === 'practice';
+    drawButton(c, id, '', x, 378, cw, 44, sel === id);
+    label(c, (arrows ? '< ' : '') + text + (arrows ? ' >' : ''), x + cw / 2, 390, 17, sel === id ? INK : CREAM, { align: 'center', maxW: cw - 14 });
   });
-  label(c, 'HOW A RUN GOES', 40, 372, 16, AQUA);
-  drawHowARunGoes(c, 40, 394, W - 80, 168, t);
-  // how you win and lose, and the keys
+  label(c, 'HOW A RUN GOES', x0, 434, 15, AQUA, { outline: 2 });
+  drawHowARunGoes(c, x0, 456, cw * 3 + 24, 112, t);
+  // how you win and lose, and the keys, across the bottom
   const win = 'CLEAR 5 WORLDS, THEN THE BOSS', lose = 'MISS A QUOTA WITH NO CONTINUES LEFT';
-  const ww = pillWidth(c, 'WIN', win, 28), lw = pillWidth(c, 'LOSE', lose, 28);
-  pill(c, W / 2 - (ww + 12 + lw) / 2, 574, 'WIN', win, GOO_C, 28);
-  pill(c, W / 2 - (ww + 12 + lw) / 2 + ww + 12, 574, 'LOSE', lose, RED, 28);
-  drawKeyLegend(c, FLIGHT_KEYS, W / 2, 618, 30, 'center');
-  label(c, '8 SHIPS · 12 MIX-INS · 3 DIFFICULTIES · ENDLESS MODE · M SOUND · ESC PAUSE', W / 2, 664, 15, '#9D97C4', { align: 'center' });
-  // best scores, top right; sound, top left
-  label(c, save.bestCup ? 'BEST RUN ' + fmtScore(save.bestCup) : 'NO RUN FINISHED YET', W - 24, 16, 18, YEL, { align: 'right' });
+  const ww = pillWidth(c, 'WIN', win, 32), lw = pillWidth(c, 'LOSE', lose, 32);
+  pill(c, W / 2 - (ww + 14 + lw) / 2, 590, 'WIN', win, GOO_C, 32);
+  pill(c, W / 2 - (ww + 14 + lw) / 2 + ww + 14, 590, 'LOSE', lose, RED, 32);
+  drawKeyLegend(c, FLIGHT_KEYS.concat([[['M'], save.muted ? 'SOUND OFF' : 'SOUND'], [['ESC'], 'PAUSE']]), W / 2, 640, 32, 'center');
+  // best scores, top right
+  label(c, save.bestCup ? 'BEST RUN ' + fmtScore(save.bestCup) : 'NO RUN FINISHED YET', W - 24, 16, 18, YEL, { align: 'right', outline: 2 });
   DIFFS.forEach((d, k) => drawGradeBadge(c, W - 128 + k * 42, 56, 16, save.trophies['run:' + k] || null));
   const top = (save.endless || [])[0];
-  label(c, top ? 'ENDLESS BEST ' + fmtScore(top.score) : 'ENDLESS: NO RUN YET', W - 24, 80, 14, MAG, { align: 'right' });
-  keycap(c, 'M', 24, 16, 26); label(c, save.muted ? 'SOUND OFF' : 'SOUND ON', 58, 21, 15, CREAM);
+  label(c, top ? 'ENDLESS BEST ' + fmtScore(top.score) : 'ENDLESS: NO RUN YET', W - 24, 80, 14, MAG, { align: 'right', outline: 2 });
+}
+
+// ---- the key art: Mister Spotless under a spotlight, a ship below hosing a stream of goo into his cheek
+// (built on first use: boss.js loads after this file)
+let TITLE_BOSS = null;
+function titleBoss() {
+  return TITLE_BOSS || (TITLE_BOSS = bossDummy({
+    filth: 12, phase: 2, maw: 0.75,
+    splats: [[-5.4, 1.8, 0.7], [-4.4, 3.1, 0.5], [-5.1, -1.6, 0.55], [5.3, -1.5, 0.6], [5.2, 2.4, 0.5], [-2.9, -4.1, 0.45], [2.8, -4.2, 0.45]]
+      .map(([x, y, r], i) => ({ x, y, r, seed: 60 + i, t0: -9 })),
+  }));
+}
+function drawTitleArt(c, x, y, t) {
+  const k = 21, b = titleBoss();
+  // a spotlight behind him
+  const g = c.createRadialGradient(x, y, 20, x, y, 340);
+  g.addColorStop(0, 'rgba(255,79,216,0.55)'); g.addColorStop(0.5, 'rgba(255,79,216,0.3)'); g.addColorStop(0.78, 'rgba(127,242,255,0.12)'); g.addColorStop(1, 'rgba(127,242,255,0)');
+  c.fillStyle = g; c.fillRect(x - 360, y - 360, 720, 720);
+  b.armT = t;
+  drawBossAt(c, b, x, y + Math.sin(t * 1.3) * 6, k, t, Math.sin(t * 0.7) * 0.03);
+  // the ship, from behind, and its goo arcing up into his left cheek
+  const sx = x - 120, sy = 500 + Math.sin(t * 2.1) * 5;
+  const [cu, cv] = BOSS.stains[0], ex = x + cu * k, ey = y - cv * k;
+  for (let i = 0; i < 7; i++) {
+    const f = ((i + t * 2.2) % 7) / 7;
+    const px = lerp(lerp(sx, sx - 70, f), lerp(sx - 70, ex, f), f), py = lerp(lerp(sy - 50, sy - 170, f), lerp(sy - 170, ey, f), f);
+    gooBlob(c, px, py, 17 - f * 9, i * 3, t);
+  }
+  gooSplat(c, ex, ey, 26, 7, 0.95, 0.6);
+  drawShip(c, RACERS[1], sx, sy, 200, { t, thrust: 1 });
+  label(c, 'MISTER SPOTLESS', x + 150, y + 118, 20, CREAM, { align: 'center', outline: 3 });
+  label(c, 'THE BOSS', x + 150, y + 142, 14, MAG, { align: 'center', outline: 2 });
 }
 
 // ---- the logo: giant cream blocks with an orange extrude and a goo drip off the second O

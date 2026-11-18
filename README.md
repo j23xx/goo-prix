@@ -6,7 +6,7 @@
 
 GOO PRIX is a first-person flap-and-splat **score attack**. You fly a goo-firing ship down a corridor through five worlds, shooting everything for points, chaining hits into a multiplier and threading the window in every wall, while every crash, bolt and drip of goop costs you. Each world breaks the rules a little more than the last, between worlds you draft one of twelve **Mix-ins** that bend the rules in your favour, and the sixth stage is a boss fight against **Mister Spotless**, a chrome cleaning robot you beat by making him filthy. Then there is **Endless Slop**.
 
-Everything is drawn in code on a 2D canvas: its own 3D projection, cel-shaded manga ships with screentone and glints, wet goo with specular highlights and running drips, comic halftone and onomatopoeia when your multiplier climbs, synthesized music and sound effects, and an announcer voiced by the browser's own offline speech voices. No images, no libraries, no network.
+Everything is drawn in code on a 2D canvas: its own 3D projection, cel-shaded manga ships with screentone and glints, glossy see-through goo (no ink line, so it stands out from the inked world) with rounded metaball splats, highlights, bubbles and running drips, comic halftone and onomatopoeia when your multiplier climbs, synthesized music and sound effects, and an announcer voiced by the browser's own offline speech voices. No images, no libraries, no network.
 
 ## Run it
 
@@ -27,7 +27,7 @@ Then open http://localhost:8080 in desktop Chrome. Any static file server pointe
 | Use item | X (or Shift) |
 | Pause / restart / mute / hide side panels | Esc or P / R / M / H |
 
-**Scoring.** Floaters 50, splitters 80 (they split), zippers 120, armoured tanks 250, rival aces that shoot back 400, fleeing goldies 1000. Threading a window is +100, a bullseye through its middle +250, clearing a whole wave +300. Every hit grows your chain; every five hits add x1 to the multiplier, up to x8, and the world gets a new coat of paint at x3 (POP: halftone and comic bursts) and x6 (WET PAINT: paint running down the screen). Stop hitting for 2.5 seconds and it drains.
+**Scoring.** Floaters 50, splitters 80 (they split), zippers 120, armoured tanks 250, rival aces that shoot back 400, fleeing goldies 1000. Threading a window is +100, a bullseye through its middle +250, clearing a whole wave +300. Every hit grows your chain; every five hits add x1 to the multiplier, up to x8, and the world gets a new coat of paint at x3 (POP: halftone and comic bursts) and x6 (WET PAINT: paint running down the screen). Stop hitting for 2.5 seconds and it drains. In play, the left panel shows your ship, continues and Mix-ins, the right one your score and chain; a TARGETS card with what everything is worth shows for the first seconds of each level and again on the pause screen.
 
 **Knocks.** Hitting a wall costs 500, a hazard 300, an enemy bolt 200, a goop curtain 150, and every knock wipes your multiplier. Grinding the side rails bleeds 50 a second.
 
@@ -61,7 +61,7 @@ Then open http://localhost:8080 in desktop Chrome. Any static file server pointe
 | 3 | WHITE-OUT | Freezer Burn | Blizzards frost the walls over until you goo them. Steering slides. Then the lights go out. |
 | 4 | UPSIDE DROWN | Lava Lamp Lagoon | Gravity flips every 12 seconds. Then the lamp tips onto its side. |
 | 5 | LOCK 'N' SLOP | Cosmic Dumpster | Zero-G thrust flight and lock-on volleys, then a junk storm. |
-| 6 | MISTER SPOTLESS | The Showroom | The boss: fill his FILTH bar. Jam his spray turrets to stop the squeegee, feed his maw, hit the gold stains. |
+| 6 | MISTER SPOTLESS | The Showroom | The boss, a prim chrome cleaning robot with a bow tie: fill his FILTH bar. Jam his spray turrets to stop the squeegee, feed his toothy maw, hit the gold stains on his cheeks and jowls. |
 
 Fly into **Jelly Cubes** for items: Turbo Burp, Goo Bazooka, Homing Sock, Bubble Wrap, Ghost Pepper, Goo Geyser, Mega Sneeze, Auto-Goo and the Stun Bomb.
 

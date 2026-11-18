@@ -2,7 +2,7 @@
 'use strict';
 
 // ============================================================================================
-// HUD_PANELS — the left column says who you are flying as, the right one what you are scoring
+// HUD_PANELS — the left panel says who you are flying as, the right one what you are scoring
 // ============================================================================================
 const SKIN_NAMES = {
   toastmoth: 'TOAST MOTH', eggsaucer: 'EGG SAUCER', hooptank: 'HOOP TANK', jamblob: 'JAM BLOB', butterfly: 'BUTTERFLY',
@@ -13,33 +13,25 @@ const SKIN_NAMES = {
   dustbunny: 'DUST BUNNY', soapmine: 'SOAP MINE',
 };
 
-// Who you are: the ship, its pilot and its four stat bars, and the continues left.
-function drawShipPanel(c, x, y, w) {
+// Who you are and what you have drafted: the ship by name, the continues left, then each Mix-in.
+function drawRunPanel(c, x, y, w) {
   const d = world.player.def, run = game.run;
-  panel(c, x, y, w, 120, 'SHIP', d.color);
-  label(c, d.name, x + 10, y + 24, 20, WHT, { maxW: w - 20 });
-  label(c, 'PILOT ' + d.pilot, x + 10, y + 46, 13, '#B9B4D8', { maxW: w - 20 });
-  STAT_NAMES.forEach((nm, j) => {
-    const yy = y + 66 + j * 12;
-    label(c, nm, x + 10, yy - 2, 11, '#B9B4D8');
-    for (let b = 0; b < 5; b++) { c.fillStyle = b < d.stats[j] ? d.color : 'rgba(255,255,255,0.12)'; c.fillRect(x + 92 + b * 22, yy, 18, 7); }
-  });
-  if (run && run.mode === 'campaign') label(c, 'CONTINUES ' + run.continues, x + w - 10, y + 7, 13, CREAM, { align: 'right' });
-}
-// What you have drafted: each Mix-in by name with its icon.
-function drawMixinPanel(c, x, y, w) {
-  const ids = game.run ? game.run.mixins : [];
+  const ids = run ? run.mixins : [];
   const shown = ids.slice(0, 7);
-  const h = 32 + Math.max(1, shown.length) * 22 + (ids.length > shown.length ? 18 : 0);
-  panel(c, x, y, w, h, 'MIX-INS ' + ids.length + '/12', MAG);
-  if (!ids.length) label(c, 'DRAFT ONE AFTER EACH LEVEL', x + 10, y + 30, 13, '#B9B4D8', { maxW: w - 20 });
+  const h = 54 + Math.max(1, shown.length) * 22 + (ids.length > shown.length ? 18 : 0);
+  panel(c, x, y, w, h, null, d.color);
+  const cont = run && run.mode === 'campaign' ? 'CONTINUES ' + run.continues : '';
+  label(c, d.name, x + 10, y + 8, 18, d.color, { maxW: w - 24 - (cont ? labelWidth(c, cont, 12) : 0) });
+  if (cont) label(c, cont, x + w - 10, y + 12, 12, CREAM, { align: 'right' });
+  label(c, 'MIX-INS ' + ids.length + '/12', x + 10, y + 32, 13, MAG);
+  if (!ids.length) label(c, 'DRAFT ONE AFTER EACH LEVEL', x + 10, y + 54, 13, '#B9B4D8', { maxW: w - 20 });
   shown.forEach((id, i) => {
-    const m = MIXIN_BY_ID[id], yy = y + 30 + i * 22;
+    const m = MIXIN_BY_ID[id], yy = y + 52 + i * 22;
     c.beginPath(); c.arc(x + 20, yy + 9, 9, 0, TAU); c.fillStyle = 'rgba(0,0,0,0.5)'; c.fill();
     drawMixinIcon(c, id, x + 20, yy + 9, 16, 0);
     label(c, m.name, x + 36, yy + 1, 15, m.risk ? RED : CREAM, { maxW: w - 46 });
   });
-  if (ids.length > shown.length) label(c, '+' + (ids.length - shown.length) + ' MORE', x + 36, y + 30 + shown.length * 22, 13, '#B9B4D8');
+  if (ids.length > shown.length) label(c, '+' + (ids.length - shown.length) + ' MORE', x + 36, y + 52 + shown.length * 22, 13, '#B9B4D8');
   return h;
 }
 // The score, the best for this level, and the chain with its multiplier and draining bar.
@@ -58,6 +50,8 @@ function drawScorePanel(c, x, y, w) {
   c.fillStyle = mcol; c.fillRect(x + 10, y + 106, (w - 20) * clamp(wd.chainT / chainLife(), 0, 1), 5);
 }
 // What is worth what on this level: the targets in play, the windows, and what knocks cost.
+// It shows for the first seconds of a level, then gets out of the way (pause shows it again).
+const TARGETS_SHOWN = 11;
 function targetLines() {
   const L = world.level, sk = SKINS[THEME.id];
   if (L.boss) return [['GOLD STAIN', 'FILTH x3', YEL], ['TURRET JAMMED', '+1,000', GOO_C], ['DUST BUNNY', '80 + REFILL', CREAM], ['SOAP MINE', '150', CREAM], ['BLEACH BOLT', '-200', RED], ['SQUEEGEE WALL', '-500', RED]];

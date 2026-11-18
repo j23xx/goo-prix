@@ -37,8 +37,9 @@ function drawPause(c) {
     restart: 'RESTART LEVEL' + (restartCost() ? ' (1 CONTINUE)' : ''),
     quit: 'QUIT TO TITLE',
   };
-  PAUSE_ITEMS.forEach((id, i) => drawButton(c, id, labels[id], W / 2 - 220, 300 + i * 62, 440, 48, game.pauseMenu.i === i));
+  PAUSE_ITEMS.forEach((id, i) => drawButton(c, id, labels[id], W / 2 - 270, 300 + i * 62, 540, 48, game.pauseMenu.i === i));
   drawKeyLegend(c, FLIGHT_KEYS, W / 2, 506, 28, 'center');
   drawKeyLegend(c, [[['R'], 'RESTART'], [['M'], 'SOUND'], [['H'], 'HIDE PANELS'], [['ESC'], 'RESUME']], W / 2, 548, 28, 'center');
+  drawTargetsPanel(c, W - 236, 150, 212);
   if (game.run && game.run.mixins.length) { label(c, 'YOUR MIX-INS', W / 2, 596, 15, MAG, { align: 'center' }); drawMixinRow(c, game.run.mixins, W / 2, 640, 34, 'center'); }
 }

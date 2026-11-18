@@ -287,7 +287,7 @@ function halftoneLayer(color) {
   k.fillStyle = color;
   for (let y = 0; y < H; y += 14) for (let x = (y / 14) % 2 ? 7 : 0; x < W; x += 14) {
     const dx = (x - W / 2) / (W / 2), dy = (y - H / 2) / (H / 2);
-    const e = clamp((Math.hypot(dx * 0.9, dy) - 0.62) / 0.5, 0, 1);
+    const e = clamp((Math.hypot(dx * 0.9, dy) - 0.74) / 0.45, 0, 1);
     if (e <= 0) continue;
     k.beginPath(); k.arc(x, y, 1 + e * 6, 0, TAU); k.fill();
   }
@@ -300,7 +300,7 @@ function drawCoat(c) {
   if (!w.coat) { w.onos = []; w.seenHits = w.hits; return; }
   const fade = clamp(w.coatT / 0.4, 0, 1);
   // POP and up: comic halftone at the edges, onomatopoeia bursting out of every hit
-  c.save(); c.globalAlpha = 0.38 * fade;
+  c.save(); c.globalAlpha = 0.26 * fade;
   c.drawImage(halftoneLayer(w.coat >= 2 ? '#7CFF3A' : '#FFC21A'), 0, 0);
   c.restore();
   w.onos = w.onos || [];

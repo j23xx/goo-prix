@@ -127,10 +127,10 @@ function drawHUD(c) {
   drawWinLosePills(c, cx, 94, 26);
   // ---- the side columns (H toggles them off)
   if (!game.hudCompact) {
-    drawShipPanel(c, 12, 10, 212);
-    drawMixinPanel(c, 12, 138, 212);
+    drawRunPanel(c, 12, 10, 212);
     drawScorePanel(c, W - 224, 10, 212);
-    drawTargetsPanel(c, W - 224, 138, 212);
+    const ta = clamp((TARGETS_SHOWN - w.t) / 0.6, 0, 1);
+    if (ta > 0) { c.save(); c.globalAlpha = ta; drawTargetsPanel(c, W - 224, 138, 212); c.restore(); }
   } else blockText(c, fmtScore(w.score), W - 20, 12, 5, { align: 'right', color: YEL, outline: 2, outlineColor: INK });
   // score deltas float by the top bar
   w.deltas.slice(-3).forEach((d, k) => {

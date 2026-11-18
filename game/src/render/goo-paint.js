@@ -15,9 +15,10 @@ function poly(c, pts) {
   for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]);
   c.closePath();
 }
-// ---- realistic goo: smooth organic outlines, a translucent lit body, a dark wet rim, specular
-// highlights and drips that run. Everything is gradients on the canvas; no images.
-const GOO_TONES = { light: '#DAFFB0', mid: '#7CFF3A', deep: '#3DA516', rim: '#1F5E0A' };
+// ---- glossy goo: translucent slime with no ink line, so it stands apart from the inked, flat-lit
+// world. A see-through body that deepens towards its edge, light glowing through its lower rim,
+// long white highlights along the top, tiny suspended bubbles, and a soft shadow where it sticks.
+const GOO_TONES = { light: '#C9FF86', mid: '#72D828', deep: '#3E9F12', rim: '#2B7A08' };
 
 // Trace a closed, smooth outline through points [[x, y], ...] (quadratic curves through midpoints).
 function smoothPath(c, pts) {
@@ -29,25 +30,49 @@ function smoothPath(c, pts) {
   }
   c.closePath();
 }
-// Fill the current path as a lump of wet goo lit from the top left, centred at (x, y), radius r.
-function gooShade(c, x, y, r, alpha) {
-  const a = alpha == null ? 1 : alpha;
-  const g = c.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.05, x, y, r * 1.15);
-  g.addColorStop(0, GOO_TONES.light); g.addColorStop(0.35, GOO_TONES.mid); g.addColorStop(0.85, GOO_TONES.deep); g.addColorStop(1, GOO_TONES.rim);
-  c.globalAlpha *= a;
-  c.fillStyle = g; c.fill();
-  c.lineWidth = Math.max(1, r * 0.08); c.strokeStyle = 'rgba(16,52,4,0.85)'; c.stroke();
-  c.globalAlpha /= a;
-}
-function gooSpecular(c, x, y, r, alpha) {
-  if (r < 3) return;
+// Fill the current path as a lump of glossy slime, lit from the top left, centred at (x, y), radius r.
+// noEdge: skip the thin edge line (for shapes built from several overlapping parts).
+function gooShade(c, x, y, r, alpha, noEdge) {
   const a = alpha == null ? 1 : alpha;
   c.save();
-  c.globalAlpha *= 0.9 * a;
-  c.fillStyle = '#FFFFFF';
-  c.beginPath(); c.ellipse(x - r * 0.34, y - r * 0.4, r * 0.26, r * 0.13, -0.6, 0, TAU); c.fill();
-  c.globalAlpha *= 0.7;
-  c.beginPath(); c.arc(x + r * 0.28, y + r * 0.26, r * 0.07, 0, TAU); c.fill();
+  c.globalAlpha *= a;
+  const g = c.createRadialGradient(x - r * 0.25, y - r * 0.3, r * 0.1, x, y, r * 1.12);
+  g.addColorStop(0, 'rgba(122,218,42,0.84)'); g.addColorStop(0.55, 'rgba(98,200,28,0.88)');
+  g.addColorStop(0.86, 'rgba(66,160,16,0.95)'); g.addColorStop(1, 'rgba(54,140,12,0.97)');
+  c.fillStyle = g; c.fill();
+  if (r > 3) {
+    // light passing through the slime pools along its lower right rim
+    c.save(); c.clip();
+    const rl = c.createRadialGradient(x - r * 0.1, y - r * 0.3, r * 0.2, x - r * 0.1, y - r * 0.3, r * 1.3);
+    rl.addColorStop(0, 'rgba(222,255,160,0)'); rl.addColorStop(0.7, 'rgba(222,255,160,0)'); rl.addColorStop(0.86, 'rgba(222,255,160,0.6)'); rl.addColorStop(1, 'rgba(222,255,160,0)');
+    c.fillStyle = rl; c.fillRect(x - r * 2, y - r * 2, r * 4, r * 4);
+    c.restore();
+  }
+  if (!noEdge) { c.lineWidth = Math.max(0.8, r * 0.04); c.strokeStyle = 'rgba(38,112,4,0.55)'; c.stroke(); }
+  c.restore();
+}
+// The gloss: a long soft highlight along the top left, a short one above it, a speck lower right,
+// and a few bubbles caught inside. seed picks where the bubbles sit.
+function gooSpecular(c, x, y, r, alpha, seed) {
+  if (r < 2.5) return;
+  const a = alpha == null ? 1 : alpha;
+  c.save();
+  c.globalAlpha *= a;
+  c.lineCap = 'round';
+  c.strokeStyle = 'rgba(255,255,255,0.88)'; c.lineWidth = Math.max(1, r * 0.11);
+  c.beginPath(); c.arc(x, y, r * 0.68, Math.PI * 1.06, Math.PI * 1.42); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = Math.max(0.8, r * 0.07);
+  c.beginPath(); c.arc(x, y, r * 0.68, Math.PI * 1.5, Math.PI * 1.6); c.stroke();
+  c.fillStyle = 'rgba(255,255,255,0.7)';
+  c.beginPath(); c.arc(x + r * 0.42, y + r * 0.4, Math.max(0.6, r * 0.055), 0, TAU); c.fill();
+  if (r > 9) {
+    const rng = mulberry32((seed | 0) + 77);
+    c.fillStyle = 'rgba(236,255,212,0.55)';
+    for (let i = 0; i < 6; i++) {
+      const ang = rng() * TAU, d = r * 0.6 * Math.sqrt(rng());
+      c.beginPath(); c.arc(x + Math.cos(ang) * d, y + Math.sin(ang) * d, Math.max(0.6, r * (0.02 + rng() * 0.025)), 0, TAU); c.fill();
+    }
+  }
   c.restore();
 }
 
@@ -57,72 +82,96 @@ function gooBlob(c, x, y, r, seed, t, color) {
   const n = 9;
   for (let i = 0; i < n; i++) {
     const a = (i / n) * TAU;
-    const wob = 1 + 0.14 * Math.sin(seed * 3.1 + i * 2.3 + t * 9) + 0.08 * Math.sin(seed + i * 5.7 + t * 4);
+    const wob = 1 + 0.12 * Math.sin(seed * 3.1 + i * 2.3 + t * 9) + 0.07 * Math.sin(seed + i * 5.7 + t * 4);
     pts.push([x + Math.cos(a) * r * wob, y + Math.sin(a) * r * wob]);
   }
   c.beginPath(); smoothPath(c, pts);
   if (color) { c.fillStyle = color; c.fill(); return; }
   gooShade(c, x, y, r);
-  gooSpecular(c, x, y, r);
+  gooSpecular(c, x, y, r, 1, seed);
 }
 
-// A splat of goo stuck to a surface: a lumpy pool with satellite droplets, thin spatter rays and
-// drips that run down from the bottom edge for the first second and a half of its life (`age`, s).
+// The outline of a splat, worked out once per seed: metaballs (a body, a couple of lumps on it and
+// 3-4 arms, each joined to it by a neck), traced round from the centre, in units of its radius.
+const SPLAT_SHAPES = new Map();
+function splatShape(seed) {
+  let pts = SPLAT_SHAPES.get(seed);
+  if (pts) return pts;
+  const rng = mulberry32((seed | 0) * 7919 + 13);
+  const balls = [[0, 0, 0.78]];
+  const na = 3 + Math.floor(rng() * 2), base = rng() * TAU;
+  for (let i = 0; i < na; i++) {
+    // an arm: a chain of balls out from the body, thinning to a neck, ending in a round bulb
+    const a = base + (i / na) * TAU + (rng() - 0.5) * 0.9, d = 1.05 + rng() * 0.5, rr = 0.22 + rng() * 0.14;
+    const ca = Math.cos(a), sa = Math.sin(a) * 0.9;
+    balls.push([ca * d * 0.45, sa * d * 0.45, rr * 1.25], [ca * d * 0.72, sa * d * 0.72, rr * 0.95], [ca * d, sa * d, rr]);
+  }
+  for (let i = 0; i < 2; i++) { const a = rng() * TAU; balls.push([Math.cos(a) * 0.4, Math.sin(a) * 0.35, 0.5 + rng() * 0.15]); }
+  const field = (x, y) => {
+    let f = 0;
+    for (const [bx, by, br] of balls) { const R = br * 1.5, q = 1 - ((x - bx) ** 2 + (y - by) ** 2) / (R * R); if (q > 0) f += q * q; }
+    return f;
+  };
+  pts = [];
+  for (let i = 0; i < 96; i++) {
+    const a = (i / 96) * TAU, ca = Math.cos(a), sa = Math.sin(a);
+    let s = 0.05;
+    while (s < 2.6 && field(ca * s, sa * s) >= 0.25) s += 0.02;
+    pts.push([ca * s, sa * s]);
+  }
+  if (SPLAT_SHAPES.size > 400) SPLAT_SHAPES.delete(SPLAT_SHAPES.keys().next().value);
+  SPLAT_SHAPES.set(seed, pts);
+  return pts;
+}
+// A splat of goo stuck to a surface: one smooth shape (the pool with its arms, and drips that run
+// down for the first second and a half of its life, `age` in s), filled once so the see-through
+// slime never doubles up, then beads of goo scattered just past its edge.
 function gooSplat(c, x, y, r, seed, alpha, age) {
   if (r < 0.8) return;
-  const rng = mulberry32(seed | 0);
-  const a0 = alpha == null ? 1 : alpha;
-  const run = age == null ? 1 : clamp(age / 1.5, 0, 1);
+  const shape = splatShape(seed | 0);
+  const at = (dx, dy) => shape.map(([u, v]) => [x + dx + u * r, y + dy + v * r]);
   c.save();
-  c.globalAlpha *= a0;
-  // spatter rays: tapered streaks flung outward
-  if (r > 5) {
-    c.fillStyle = GOO_TONES.deep;
-    for (let i = 0; i < 6; i++) {
-      const a = rng() * TAU, l = r * (1.1 + rng() * 0.9), w = r * (0.06 + rng() * 0.06);
-      const ca = Math.cos(a), sa = Math.sin(a);
-      c.beginPath();
-      c.moveTo(x + ca * r * 0.6 - sa * w, y + sa * r * 0.6 + ca * w);
-      c.lineTo(x + ca * l, y + sa * l);
-      c.lineTo(x + ca * r * 0.6 + sa * w, y + sa * r * 0.6 - ca * w);
-      c.closePath(); c.fill();
-    }
+  c.globalAlpha *= alpha == null ? 1 : alpha;
+  if (r < 6) {   // far away: just the shape, shaded
+    c.beginPath(); smoothPath(c, at(0, 0)); gooShade(c, x, y, r * 1.1, 1, true);
+    c.restore();
+    return;
   }
-  // drips running down from the lower edge: drawn first, so the pool covers where they start
+  const rng = mulberry32(seed | 0);
+  const run = age == null ? 1 : clamp(age / 1.5, 0, 1);
   const drips = [];
-  for (let i = 0; i < 3; i++) drips.push([x + (rng() - 0.5) * r * 1.1, r * (0.3 + rng() * 0.9) * run, r * (0.1 + rng() * 0.07)]);
-  for (const [dx, len, w] of drips) {
-    if (len < w) continue;
-    const top = y + r * 0.2, end = y + r * 0.55 + len;
-    c.beginPath();
-    c.moveTo(dx - w, top);
-    c.bezierCurveTo(dx - w, end - w * 2, dx - w * 1.25, end - w, dx - w * 1.2, end);
-    c.arc(dx, end, w * 1.2, Math.PI, 0, true);
-    c.bezierCurveTo(dx + w * 1.25, end - w, dx + w, end - w * 2, dx + w, top);
-    c.closePath();
-    const g = c.createLinearGradient(dx - w * 1.2, 0, dx + w * 1.2, 0);
-    g.addColorStop(0, GOO_TONES.deep); g.addColorStop(0.35, GOO_TONES.light); g.addColorStop(0.6, GOO_TONES.mid); g.addColorStop(1, GOO_TONES.deep);
-    c.fillStyle = g; c.fill();
-    c.lineWidth = Math.max(1, r * 0.06); c.strokeStyle = 'rgba(16,52,4,0.8)'; c.stroke();
+  for (let i = 0; i < 3; i++) drips.push([x + (rng() - 0.5) * r * 0.9, r * (0.25 + rng() * 0.9) * run, r * (0.07 + rng() * 0.06)]);
+  const dripPaths = (dx, dy) => {
+    for (const [px, len, w] of drips) {
+      if (len < w * 1.5) continue;
+      const x0 = px + dx, top = y + dy + r * 0.3, end = y + dy + r * 0.62 + len;
+      c.moveTo(x0 + w, top);
+      c.bezierCurveTo(x0 + w * 0.9, end - w * 3, x0 + w * 1.3, end - w * 1.2, x0 + w * 1.25, end);
+      c.arc(x0, end, w * 1.25, 0, Math.PI, false);
+      c.bezierCurveTo(x0 - w * 1.3, end - w * 1.2, x0 - w * 0.9, end - w * 3, x0 - w, top);
+      c.closePath();
+    }
+  };
+  // a soft shadow where it sticks: the same shape twice, nudged down and right
+  for (const [k, al] of [[1, 0.16], [0.55, 0.16]]) {
+    c.beginPath(); smoothPath(c, at(r * 0.06 * k, r * 0.13 * k)); dripPaths(r * 0.06 * k, r * 0.13 * k);
+    c.fillStyle = 'rgba(10,34,0,' + al + ')'; c.fill();
   }
-  // the main pool: an organic outline, wider than tall
-  const pts = [];
-  const n = 12;
-  for (let i = 0; i < n; i++) {
-    const a = (i / n) * TAU;
-    const rr = r * (0.78 + rng() * 0.38);
-    pts.push([x + Math.cos(a) * rr * 1.08, y + Math.sin(a) * rr * 0.92]);
-  }
-  c.beginPath(); smoothPath(c, pts);
-  gooShade(c, x, y, r);
-  // satellite droplets
-  for (let i = 0; i < 5; i++) {
-    const a = rng() * TAU, d = r * (1.15 + rng() * 0.7), rr = r * (0.08 + rng() * 0.12);
-    const px = x + Math.cos(a) * d, py = y + Math.sin(a) * d;
+  // the pool and its drips, wound the same way so the union fills once
+  c.beginPath(); smoothPath(c, at(0, 0)); dripPaths(0, 0);
+  gooShade(c, x, y, r * 1.1, 1, true);
+  c.beginPath(); smoothPath(c, at(0, 0));
+  c.lineWidth = Math.max(0.8, r * 0.035); c.strokeStyle = 'rgba(38,112,4,0.5)'; c.stroke();
+  // beads of goo just past the edge
+  for (let i = 0; i < 4; i++) {
+    const [u, v] = shape[Math.floor(rng() * shape.length)], rr = r * (0.06 + rng() * 0.09);
+    const far = 1 + (rr * 1.8 + r * rng() * 0.3) / (r * Math.max(0.3, Math.hypot(u, v)));
+    const px = x + u * r * far, py = y + v * r * far;
     c.beginPath(); c.arc(px, py, rr, 0, TAU); gooShade(c, px, py, rr);
+    gooSpecular(c, px, py, rr, 0.9, i);
   }
-  gooSpecular(c, x, y, r * 0.9);
-  for (const [dx, len, w] of drips) if (len > w * 2) gooSpecular(c, dx, y + r * 0.55 + len, w * 1.2, 0.8);
+  gooSpecular(c, x, y, r * 0.85, 1, seed);
+  for (const [dx, len, w] of drips) if (len > w * 3) gooSpecular(c, dx, y + r * 0.62 + len, w * 1.25, 0.8, 0);
   c.restore();
 }
 function strokeBox(c, x, y, w, h, lw, color) {
