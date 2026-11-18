@@ -116,7 +116,7 @@ function drawHUD(c) {
   const tLeft = w.boss ? w.boss.time : Math.max(0, (w.length - p.dist) / Math.max(1, levelSpeed(L)));
   const ts = Math.ceil(tLeft), low = tLeft < 10 && Math.floor(w.t * 4) % 2 === 0;
   hudText(c, Math.floor(ts / 60) + ':' + String(ts % 60).padStart(2, '0'), W - 20, 10, 5, low ? RED : WHT, 'right');
-  const stage = (loopOf() ? 'LOOP ' + (loopOf() + 1) + ' ' : '') + (L.boss ? '6/6 FINAL BOSS' : (w.levelIdx + 1) + '/6 ' + L.name);
+  const stage = (loopOf() ? 'LOOP ' + (loopOf() + 1) + ' ' : '') + (L.boss ? 'BOSS' : (w.levelIdx + 1) + '/5 ' + L.name);
   hudText(c, stage, W - 168, 10, 2, CYN, 'right');
   hudText(c, 'KNOCKS ' + w.knocks, W - 168, 32, 2, w.knocks ? RED : GOO_C, 'right');
   // ---- the quota line hugging the bar's bottom edge (the boss shows his FILTH at the bottom instead)
@@ -164,7 +164,7 @@ function drawHUD(c) {
     fg.addColorStop(0, '#3DA516'); fg.addColorStop(0.6, GOO_C); fg.addColorStop(1, '#DAFFB0');
     c.fillStyle = fg; c.fillRect(fx, fy, fw * b.filth / 100, 16);
     for (const m of [40, 75]) { c.fillStyle = WHT; c.fillRect(fx + fw * m / 100 - 1, fy - 5, 3, 26); }
-    blockText(c, 'FILTH ' + Math.floor(b.filth) + '% · 100% WINS', fx, fy + 24, 2, { color: GOO_C, outline: 1.5, outlineColor: INK });
+    blockText(c, 'FILTH ' + Math.floor(b.filth) + '%', fx, fy + 24, 2, { color: GOO_C, outline: 1.5, outlineColor: INK });
     const wiping = b.turrets.every((tr) => tr.hp > 0);
     blockText(c, 'PHASE ' + b.phase + '/3 · ' + (wiping ? 'JAM A TURRET!' : 'SQUEEGEE JAMMED'), fx + fw, fy + 24, 2, { align: 'right', color: wiping ? CYN : YEL, outline: 1.5, outlineColor: INK });
   }

@@ -5,7 +5,7 @@
 function drawBossPortrait(c, x, y, t) {
   const k = smooth01((t - 0.6) / 0.5);
   if (k <= 0) return;
-  const b = bossDummy({ maw: 0.2 + 0.2 * Math.sin(t * 3), armT: t });
+  const b = { u: 0, v: 0, dist: 0, filth: 0, phase: 1, maw: 0.2 + 0.2 * Math.sin(t * 3), turrets: BOSS.turrets.map(([tx, ty]) => ({ x: tx, y: ty, hp: 6 })), splats: [], dead: false, stun: 0, hitT: 0, armT: t, bleach: 0 };
   c.save(); c.translate(x + (1 - k) * 500, y);
   c.scale(0.55, 0.55);
   drawBossAt(c, b, 0, 0, 60, t);

@@ -8,7 +8,7 @@
 const BOSS = {
   body: [6.6, 5.2],
   turrets: [[-7.6, 1.2], [7.6, 1.2]],
-  stains: [[-4.2, 0.0], [4.2, -0.1], [-3.0, -3.1], [3.1, -3.0]],   // cheeks and jowls, clear of the face
+  stains: [[-3.4, 2.3], [3.5, 2.0], [-2.7, -2.9], [2.9, -2.7]],
   maw: [0, -1.5],
   time: 150,
 };
@@ -66,7 +66,7 @@ function bossCatch(g) {
   }
   for (const i of bossStainsExposed()) {
     const [sx0, sy0] = BOSS.stains[i];
-    if (near(sx0, sy0, 1.5)) { bossSplat(x, y, 0.8); bossDamage(1.5 * g.dmg * (hasMix('turpentine') ? 1.5 : 1), g); worldPopup('STAIN!', b.dist, b.u + sx0, b.v + sy0 + 1.2); return true; }
+    if (near(sx0, sy0, 1.3)) { bossSplat(x, y, 0.8); bossDamage(1.5 * g.dmg * (hasMix('turpentine') ? 1.5 : 1), g); worldPopup('STAIN!', b.dist, b.u + sx0, b.v + sy0 + 1.2); return true; }
   }
   if (b.maw > 0.5 && near(BOSS.maw[0], BOSS.maw[1], 1.8)) { bossSplat(x, y, 0.65); bossDamage(1.5 * g.dmg * (hasMix('turpentine') ? 1.5 : 1), g); return true; }
   if ((x / BOSS.body[0]) ** 2 + (y / BOSS.body[1]) ** 2 < 1) { bossSplat(x, y, 0.55); bossDamage(0.5 * g.dmg, g); return true; }
@@ -184,10 +184,6 @@ function updateBoss(dt) {
   w.walls = w.walls.filter((wl) => gap(p.dist, wl.dist) > -12);
 }
 
-// A Mister Spotless that is only for show (title art, intro card, step tiles): no fight attached.
-function bossDummy(o) {
-  return Object.assign({ u: 0, v: 0, dist: 0, filth: 0, phase: 1, maw: 0.3, turrets: BOSS.turrets.map(([x, y]) => ({ x, y, hp: 6 })), splats: [], dead: false, stun: 0, hitT: 0, armT: 0, bleach: 0 }, o);
-}
 // ---- drawing Mister Spotless: a chrome body, mop crest, squeegee arms, spray-bottle turrets,
 // a vacuum maw and gold stains, getting filthier with every hit
 function drawBoss(c, b, dz) {
@@ -224,10 +220,10 @@ function drawBossAt(c, b, x, y, k, t, roll) {
   // filth tint creeps over the chrome as it fills up
   c.fillStyle = 'rgba(70,90,20,' + (b.filth / 100 * 0.45).toFixed(3) + ')'; c.fillRect(-U(bw), V(bh), U(bw * 2), U(bh * 2));
   c.globalAlpha = 0.5; c.fillStyle = '#FFFFFF';
-  c.beginPath(); c.ellipse(-U(4.5), V(2.3), U(1.2), U(0.42), -0.7, 0, TAU); c.fill();
+  c.beginPath(); c.ellipse(-U(2.4), V(2.6), U(1.6), U(0.5), -0.4, 0, TAU); c.fill();
   c.globalAlpha = 1;
   c.strokeStyle = 'rgba(11,11,18,0.45)'; c.lineWidth = Math.max(1, lw * 0.35);
-  c.beginPath(); c.moveTo(0, V(bh)); c.lineTo(0, V(3.3)); c.stroke();
+  c.beginPath(); c.moveTo(-U(bw), V(0.2)); c.lineTo(U(bw), V(0.2)); c.moveTo(0, V(bh)); c.lineTo(0, V(2.6)); c.stroke();
   c.restore();
   c.beginPath(); c.ellipse(0, 0, U(bw), U(bh), 0, 0, TAU); c.lineWidth = lw * 1.3; c.strokeStyle = INK; c.stroke();
   // the mop-head crest
@@ -239,48 +235,30 @@ function drawBossAt(c, b, x, y, k, t, roll) {
     c.lineCap = 'round'; c.lineWidth = U(0.42) + 2; c.strokeStyle = INK; c.stroke();
     c.lineWidth = U(0.42); c.strokeStyle = i % 2 ? '#F4F4F4' : '#C9CDD8'; c.stroke();
   }
-  // the face, big enough to read from across the room: angry brows, a visor with two slanted
-  // glowing eyes, a toothy vacuum mouth that gapes in phase 2, and a prim red bow tie
-  const eyeCol = b.phase >= 3 ? '#FF2D3A' : '#7FF2FF';
-  const quad = (pts) => { c.beginPath(); pts.forEach(([u, v], i) => (i ? c.lineTo(U(u), V(v)) : c.moveTo(U(u), V(v)))); c.closePath(); };
-  for (const s of [-1, 1]) { quad([[s * 0.35, 2.6], [s * 0.35, 3.25], [s * 3.4, 4.05], [s * 3.55, 3.35]]); c.fillStyle = INK; c.fill(); }
-  c.beginPath(); c.roundRect(-U(3.6), V(2.45), U(7.2), U(2.15), U(0.8)); c.fillStyle = '#10141F'; c.fill(); c.lineWidth = lw; c.strokeStyle = INK; c.stroke();
-  for (const s of [-1, 1]) {
-    quad([[s * 0.55, 1.7], [s * 3.05, 2.15], [s * 2.85, 0.7], [s * 0.7, 0.7]]);
-    c.fillStyle = eyeCol; c.fill();
-    c.save(); c.globalCompositeOperation = 'lighter';
-    const eg = c.createRadialGradient(U(s * 1.8), V(1.35), 0, U(s * 1.8), V(1.35), U(2.2));
-    eg.addColorStop(0, b.phase >= 3 ? 'rgba(255,45,58,0.55)' : 'rgba(127,242,255,0.5)'); eg.addColorStop(1, 'rgba(0,0,0,0)');
-    c.fillStyle = eg; c.fillRect(U(s * 1.8) - U(2.2), V(1.35) - U(2.2), U(4.4), U(4.4));
+  // the visor and its angry cyan eyes
+  c.beginPath(); c.roundRect(-U(3.4), V(2.3), U(6.8), U(1.3), U(0.6)); c.fillStyle = '#10141F'; c.fill(); c.lineWidth = lw; c.strokeStyle = INK; c.stroke();
+  for (const side of [-1, 1]) {
+    c.save(); c.translate(U(side * 1.6), V(1.65)); c.rotate(side * -0.25);
+    c.globalCompositeOperation = 'lighter';
+    const eg = c.createRadialGradient(0, 0, 0, 0, 0, U(1.2));
+    eg.addColorStop(0, 'rgba(255,255,255,0.95)'); eg.addColorStop(0.35, b.phase >= 3 ? 'rgba(255,45,58,0.9)' : 'rgba(127,242,255,0.9)'); eg.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = eg; c.fillRect(-U(1.3), -U(0.7), U(2.6), U(1.4));
     c.restore();
-    c.fillStyle = '#FFFFFF'; c.fillRect(U(s * 1.55) - U(0.3), V(1.6), U(0.6), U(0.55));
   }
-  // the vacuum mouth, gaping open in phase 2 with a gold core inside and a row of teeth
-  const [mx, my] = BOSS.maw, mw = 2.4, mh = 0.3 + 1.6 * b.maw;
-  c.beginPath(); c.ellipse(U(mx), V(my), U(mw), U(mh), 0, 0, TAU);
-  c.fillStyle = '#05070D'; c.fill();
-  c.save(); c.clip();
+  // the vacuum maw, opening in phase 2 with a gold core inside
+  const mh = 0.35 + 2.0 * b.maw;
+  c.beginPath(); c.ellipse(U(BOSS.maw[0]), V(BOSS.maw[1]), U(1.9), U(mh), 0, 0, TAU);
+  c.fillStyle = '#05070D'; c.fill(); c.lineWidth = lw; c.strokeStyle = INK; c.stroke();
   if (b.maw > 0.3) {
+    c.save(); c.clip();
     c.strokeStyle = 'rgba(127,242,255,0.6)'; c.lineWidth = 2;
-    for (let i = 0; i < 5; i++) { c.beginPath(); c.ellipse(U(mx), V(my), U(mw - 0.1 - i * 0.42), U(mh * (1 - i * 0.18)), t * 2 + i, 0, TAU); c.stroke(); }
-    c.save(); c.globalCompositeOperation = 'lighter';
-    const cg = c.createRadialGradient(U(mx), V(my), 0, U(mx), V(my), U(1.1));
+    for (let i = 0; i < 5; i++) { c.beginPath(); c.ellipse(U(BOSS.maw[0]), V(BOSS.maw[1]), U(1.8 - i * 0.32), U(mh * (1 - i * 0.18)), t * 2 + i, 0, TAU); c.stroke(); }
+    c.globalCompositeOperation = 'lighter';
+    const cg = c.createRadialGradient(U(BOSS.maw[0]), V(BOSS.maw[1]), 0, U(BOSS.maw[0]), V(BOSS.maw[1]), U(1.1));
     cg.addColorStop(0, 'rgba(255,255,255,1)'); cg.addColorStop(0.4, 'rgba(255,194,26,0.9)'); cg.addColorStop(1, 'rgba(255,194,26,0)');
-    c.fillStyle = cg; c.fillRect(U(mx - 2), V(my + 2), U(4), U(4));
+    c.fillStyle = cg; c.fillRect(-U(2), V(BOSS.maw[1] + 2), U(4), U(4));
     c.restore();
   }
-  const tooth = Math.min(0.75, mh * 0.45);
-  c.fillStyle = '#F4F6FA'; c.strokeStyle = INK; c.lineWidth = Math.max(1, lw * 0.45);
-  for (let i = 0; i < 6; i++) {
-    const tu = mx - 2.0 + i * 0.8;
-    quad([[tu - 0.38, my + mh + 0.2], [tu + 0.38, my + mh + 0.2], [tu, my + mh * Math.sqrt(Math.max(0, 1 - (tu / mw) ** 2)) - tooth]]); c.fill(); c.stroke();
-    if (i < 5) { const bu = tu + 0.4; quad([[bu - 0.34, my - mh - 0.2], [bu + 0.34, my - mh - 0.2], [bu, my - mh * Math.sqrt(Math.max(0, 1 - (bu / mw) ** 2)) + tooth * 0.8]]); c.fill(); c.stroke(); }
-  }
-  c.restore();
-  c.beginPath(); c.ellipse(U(mx), V(my), U(mw), U(mh), 0, 0, TAU); c.lineWidth = lw; c.strokeStyle = INK; c.stroke();
-  // the bow tie
-  for (const s of [-1, 1]) { quad([[s * 0.2, -4.15], [s * 1.7, -3.5], [s * 1.7, -4.8]]); c.fillStyle = '#FF2D3A'; c.fill(); c.lineWidth = lw * 0.8; c.strokeStyle = INK; c.stroke(); }
-  c.beginPath(); c.roundRect(-U(0.4), V(-3.8), U(0.8), U(0.7), U(0.2)); c.fillStyle = '#C8102E'; c.fill(); c.stroke();
   // the gold stains: weak points, pulsing when exposed
   const exposed = b.phase >= 3 ? [0, 1, 2, 3] : [Math.floor(t / 5) % 4];
   BOSS.stains.forEach(([sx0, sy0], i) => {

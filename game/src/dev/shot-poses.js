@@ -64,25 +64,26 @@ function poseBoss() {
   flyLevel(5, 14);
   const w = world, b = w.boss, p = w.player;
   game.run.mixins = ['thick', 'sticky', 'goldleaf', 'hotsauce'];
-  w.t = Math.floor(w.t / 20) * 20 + 21;   // the left cheek stain is the one exposed
   w.popups = []; w.wind = []; w.bolts = []; w.walls = []; w.globs = []; w.targets = [];
   b.filth = 58; b.phase = 2; b.maw = 1; b.time = 96; b.turrets[0].hp = 0; b.stun = 0; b.hitT = 0;
   b.off = 25; b.u = 0.6; b.v = 7.6; b.dist = p.dist + b.off;
-  p.u = -2.4; p.v = 5.2; p.vu = -1; p.vv = 1; p.ghost = 0; p.invuln = 0; p.shield = 0; p.stun = 0; p.flapAnim = 0.4; p.boostT = 0; p.item = 'bomb';
-  w.camU = -0.9; w.camV = p.v + CFG.camUp; w.camRoll = 0; w.camSpin = 0;
-  // goo on his chrome round the edges, so his face still reads at a glance
-  b.splats = [[-5.6, 1.9, 0.7], [-4.6, 3.0, 0.55], [-5.0, -1.7, 0.6], [-3.0, -4.0, 0.5], [5.4, -1.4, 0.65], [5.3, 2.4, 0.55], [2.7, -4.2, 0.5], [1.4, 4.6, 0.45]]
-    .map(([x, y, r], i) => ({ x, y, r, seed: 100 + i, t0: w.t - 1 - i * 0.2 }));
+  p.u = -0.4; p.v = 5.2; p.vu = 2; p.vv = 1; p.ghost = 0; p.invuln = 0; p.shield = 0; p.stun = 0; p.flapAnim = 0.4; p.boostT = 0; p.item = 'bomb';
+  w.camU = p.u; w.camV = p.v + CFG.camUp; w.camRoll = 0; w.camSpin = 0;
+  const r = mulberry32(3);
+  b.splats = [];
+  for (let i = 0; i < 12; i++) b.splats.push({ x: r() * 11 - 5.5, y: r() * 8 - 4, r: 0.5 + r() * 0.5, seed: 100 + i, t0: w.t - 1 - r() * 2 });
   // a stream of goo arcing into the exposed gold stain
   const si = Math.floor(w.t / 5) % 4, [sx0, sy0] = BOSS.stains[si];
   for (let k = 1; k <= 5; k++) {
     const f = k / 6;
     w.globs.push({ dist: p.dist + 3 + f * (b.off - 3), u: lerp(p.u, b.u + sx0, f), v: lerp(p.v + 0.3, b.v + sy0, f) + Math.sin(f * Math.PI) * 0.8, vs: 200, vu: 0, vv: 0, owner: p, life: 1, big: false, r: CFG.globR, seed: 40 + k, hit: [], beat: false, homing: null, lockBonus: 0, dmg: 1 });
   }
-  worldPopup('+1,200 STAIN!', b.dist, b.u + sx0 - 2.2, b.v + sy0 + 2.6); w.popups[w.popups.length - 1].t = 0.35;
-  // a bleach bolt on its way in, and a dust bunny spat from the maw
-  w.bolts.push({ dist: p.dist + 12, u: p.u + 6.4, v: p.v + 0.6, vs: 6, vu: -2, vv: -1, life: 3, kind: 'bleach' });
-  spawnTarget('floater', p.dist + 17, 6.5, 3.6, { skin: 'dustbunny', refill: true, pts: 80 });
+  worldPopup('+1,200 STAIN!', b.dist, b.u + sx0, b.v + sy0 + 1.6); w.popups[w.popups.length - 1].t = 0.35;
+  // two bleach bolts on their way in, and dust bunnies spat from the maw
+  w.bolts.push({ dist: p.dist + 14, u: p.u + 3.2, v: p.v + 2.4, vs: 6, vu: -2, vv: -1, life: 3, kind: 'bleach' });
+  w.bolts.push({ dist: p.dist + 19, u: p.u - 4.2, v: p.v + 3.4, vs: 6, vu: 2, vv: -1, life: 3, kind: 'bleach' });
+  spawnTarget('floater', p.dist + 17, 5.5, 4.2, { skin: 'dustbunny', refill: true, pts: 80 });
+  spawnTarget('floater', p.dist + 20, -6.2, 9.6, { skin: 'dustbunny', refill: true, pts: 80 });
   w.score = 18240; w.shownScore = 18240; w.knocks = 1;
   dressCoat(27, 'SPLOOSH!');
   w.onos = [];
