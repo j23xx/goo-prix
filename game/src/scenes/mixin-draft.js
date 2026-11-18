@@ -1,37 +1,44 @@
 // GOO PRIX · src/scenes/mixin-draft.js — Between levels: pick 1 of 3 Mix-ins (or reroll), then on to the next world.
 'use strict';
 
-// The draft: what you just cleared, three paint cans to pick from, and the whole run as a route
-// map with YOU ARE HERE on the next stage.
+// The draft: three paint cans over the dimmed next world, the run's Mix-ins along the bottom.
 function drawDraft(c, t) {
   const run = game.run, d = game.draft;
-  applyCamera(); renderWorld(c); groundWash(c, 0.86);
+  applyCamera(); renderWorld(c); dim(c, 0.55);
   const nextL = LEVELS[run.level];
-  const last = run.stages.filter(Boolean).slice(-1)[0];
-  const done = run.mode === 'endless' ? 'LOOP ' + (run.loop + 1) + ' · ' + run.cleared + ' STAGES CLEARED' : 'STAGE ' + run.level + ' CLEARED';
-  label(c, done + (last ? ' · GRADE ' + last.grade : '') + ' — NEXT: ' + (nextL.boss ? 'THE FINAL BOSS' : nextL.name), W / 2, 12, 20, AQUA, { align: 'center' });
-  blockText(c, 'PICK A MIX-IN', W / 2, 40, 6, { align: 'center', color: YEL, outline: 4, outlineColor: INK, shadow: 7, shadowColor: PNK });
-  const cw = 270, chh = 320, gap0 = 40, x0 = W / 2 - (cw * 3 + gap0 * 2) / 2, y0 = 100;
+  blockText(c, 'PICK A MIX-IN', W / 2, 26, 8, { align: 'center', color: YEL, outline: 5, outlineColor: INK, shadow: 9, shadowColor: PNK });
+  hudText(c, (run.mode === 'endless' ? 'LOOP ' + (run.loop + 1) + ' · DRAFT ' + (run.drafts + 1) : 'DRAFT ' + (run.drafts + 1) + '/5') + ' · ' + (nextL.boss ? 'NEXT: THE FINAL BOSS' : 'NEXT: ' + nextL.name), W / 2, 98, 3, CYN, 'center');
+  const cw = 300, chh = 380, gap0 = 46, x0 = W / 2 - (cw * 3 + gap0 * 2) / 2, y0 = 140;
   d.offer.forEach((id, j) => {
     const x = x0 + j * (cw + gap0);
     uiRect('can' + j, x, y0, cw, chh);
+    const chosen = d.pickT >= 0 && j === d.i;
     c.save();
-    if (d.pickT >= 0 && j === d.i) { const k = clamp(d.pickT / 0.5, 0, 1); c.translate(x + cw / 2, y0 + chh); c.rotate(k * 0.5); c.translate(-(x + cw / 2), -(y0 + chh)); }
-    else if (d.pickT >= 0) c.globalAlpha = clamp(1 - d.pickT * 2, 0, 1);
+    if (chosen) {
+      // the chosen can tips over and pours
+      const k = clamp(d.pickT / 0.5, 0, 1);
+      c.translate(x + cw / 2, y0 + chh); c.rotate(k * 0.5); c.translate(-(x + cw / 2), -(y0 + chh));
+    } else if (d.pickT >= 0) c.globalAlpha = clamp(1 - d.pickT * 2, 0, 1);
     drawMixinCard(c, id, x, y0, cw, chh, j === d.i, t);
-    keycap(c, String(j + 1), x + 12, y0 + 30, 26, j === d.i);
+    blockText(c, String(j + 1), x + 18, y0 + 34, 3, { color: INK });
     c.restore();
   });
-  if (run.mixins.length) { label(c, 'YOUR MIX-INS', 40, 440, 15, MAG); drawMixinRow(c, run.mixins, 40, 478, 34, 'left'); }
-  label(c, 'RUN TOTAL ' + fmtScore(run.total), W - 40, 440, 20, YEL, { align: 'right' });
-  label(c, 'EVERY MIX-IN RAISES LATER QUOTAS 20%', W - 40, 466, 14, '#B9B4D8', { align: 'right' });
-  label(c, 'THE RUN SO FAR', W / 2, 500, 15, AQUA, { align: 'center' });
-  drawRouteMap(c, 170, 580, W - 340, run, run.mode === 'endless' ? run.level : run.level);
   if (d.pickT >= 0) {
-    const k = clamp((d.pickT - 0.3) / 0.6, 0, 1), r = mulberry32(12);
-    for (let i = 0; i < 16; i++) { const x = r() * W, wd = 40 + r() * 70, len = k * (H + 100) * (0.7 + r() * 0.5); c.beginPath(); c.roundRect(x - wd / 2, -20, wd, len, wd / 2); gooShade(c, x, len / 2, wd); }
+    // a goo wipe pouring out of the chosen can
+    const k = clamp((d.pickT - 0.3) / 0.6, 0, 1);
+    const r = mulberry32(12);
+    for (let i = 0; i < 16; i++) {
+      const x = r() * W, wd = 40 + r() * 70, len = k * (H + 100) * (0.7 + r() * 0.5);
+      c.beginPath(); c.roundRect(x - wd / 2, -20, wd, len, wd / 2);
+      gooShade(c, x, len / 2, wd);
+    }
   }
-  drawKeyLegend(c, [[['←', '→'], 'CHOOSE'], [['1', '2', '3'], 'PICK'], [['ENTER'], 'CONFIRM'], [['R'], run.rerolledThis ? 'REROLLED' : 'REROLL -1,000']], W / 2, 672, 28, 'center');
+  // owned Mix-ins, the reroll and the controls
+  if (run.mixins.length) { hudText(c, 'YOUR MIX-INS', 60, 552, 2, CYN); drawMixinRow(c, run.mixins, 60, 596, 44, 'left'); }
+  hudText(c, 'RUN TOTAL ' + fmtScore(run.total), W - 60, 552, 3, YEL, 'right');
+  hudText(c, run.rerolledThis ? 'REROLLED' : 'R: REROLL (-1,000)', W - 60, 590, 2, run.total >= 1000 && !run.rerolledThis ? WHT : '#6a6a76', 'right');
+  c.fillStyle = '#000'; c.fillRect(0, 664, W, 56);
+  blockText(c, '← → CHOOSE    1 2 3 PICK    ENTER CONFIRM', W / 2, 684, 2, { align: 'center', color: '#fff' });
 }
 
 // ---- MIX-IN DRAFT: pick 1 of 3 perks before the next level (R rerolls for 1,000 points)

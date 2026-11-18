@@ -9,7 +9,7 @@ function startRun(mode, levelIdx) {
   game.run = {
     mode, level: levelIdx || 0, continues: 3, scores: [], grades: [], total: 0, newHigh: false,
     mixins: [], drafts: 0, rerolls: 0, adjust: 0, seed: Math.floor(rand() * 1e6) + 1,
-    loop: 0, cleared: 0, over: false, stats: newRunStats(), stages: [],
+    loop: 0, cleared: 0, over: false,
   };
   if (mode === 'endless') game.run.continues = 0;
 }
@@ -31,12 +31,11 @@ function endEndless() {
 function recordLevel(res) {
   const run = game.run;
   if (run.mode === 'endless') {
-    if (res.pass) { run.total += res.score; run.cleared++; run.grades[res.levelIdx] = res.grade; logStage(run, res); }   // each stage's latest grade
+    if (res.pass) { run.total += res.score; run.cleared++; run.grades[res.levelIdx] = res.grade; }   // each stage's latest grade
     else endEndless();
     return;
   }
   if (!res.pass) return;
-  logStage(run, res);
   run.scores[res.levelIdx] = res.score;
   run.grades[res.levelIdx] = res.grade;
   run.total = run.scores.reduce((a, b) => a + (b || 0), 0) + (run.adjust || 0);

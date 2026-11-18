@@ -25,9 +25,9 @@ Then open http://localhost:8080 in desktop Chrome. Any static file server pointe
 | Dive, then flap for a Swoop boost (in zero-G: thrust down) | Hold ↓ |
 | Shoot goo (auto-aims; in zero-G hold to lock up to six, release to fire) | Space |
 | Use item | X (or Shift) |
-| Pause / restart / mute / hide side panels | Esc or P / R / M / H |
+| Pause / restart / mute | Esc / R / M |
 
-**Scoring.** Floaters 50, splitters 80 (they split), zippers 120, armoured tanks 250, rival aces that shoot back 400, fleeing goldies 1000. Threading a window is +100, a bullseye through its middle +250, clearing a whole wave +300. Every hit grows your chain; every five hits add x1 to the multiplier, up to x8, and the world gets a new coat of paint at x3 (POP: halftone and comic bursts) and x6 (WET PAINT: paint running down the screen). Stop hitting for 2.5 seconds and it drains. In play, the left panel shows your ship, continues and Mix-ins, the right one your score and chain; a TARGETS card with what everything is worth shows for the first seconds of each level and again on the pause screen.
+**Scoring.** Floaters 50, splitters 80 (they split), zippers 120, armoured tanks 250, rival aces that shoot back 400, fleeing goldies 1000. Threading a window is +100, a bullseye through its middle +250, clearing a whole wave +300. Every hit grows your chain; every five hits add x1 to the multiplier, up to x8, and the world gets a new coat of paint at x3 (POP: halftone and comic bursts) and x6 (WET PAINT: paint running down the screen). Stop hitting for 2.5 seconds and it drains.
 
 **Knocks.** Hitting a wall costs 500, a hazard 300, an enemy bolt 200, a goop curtain 150, and every knock wipes your multiplier. Grinding the side rails bleeds 50 a second.
 
@@ -50,8 +50,6 @@ Then open http://localhost:8080 in desktop Chrome. Any static file server pointe
 | HOT SAUCE | All points +50%, but knocks cost double |
 | TURPENTINE | Tanks and aces lose an armour pip; boss stains +50% |
 
-**The HUD says it in words.** Every level shows its stage, its rule, a WIN pill and a LOSE pill, your ship and Mix-ins, what every target is worth, each control as a key, and PAUSE / SOUND / RESTART. The run card adds a stats grid, your build, a stage-by-stage chart and eight badges to chase.
-
 **Endless Slop.** The six stages loop with a Mix-in draft after every one; each loop flies 10% faster and asks 50% more. Miss one quota and the run is over. The best five runs are kept.
 
 | # | Level | World | The new rule |
@@ -61,7 +59,7 @@ Then open http://localhost:8080 in desktop Chrome. Any static file server pointe
 | 3 | WHITE-OUT | Freezer Burn | Blizzards frost the walls over until you goo them. Steering slides. Then the lights go out. |
 | 4 | UPSIDE DROWN | Lava Lamp Lagoon | Gravity flips every 12 seconds. Then the lamp tips onto its side. |
 | 5 | LOCK 'N' SLOP | Cosmic Dumpster | Zero-G thrust flight and lock-on volleys, then a junk storm. |
-| 6 | MISTER SPOTLESS | The Showroom | The boss, a prim chrome cleaning robot with a bow tie: fill his FILTH bar. Jam his spray turrets to stop the squeegee, feed his toothy maw, hit the gold stains on his cheeks and jowls. |
+| 6 | MISTER SPOTLESS | The Showroom | The boss, a prim chrome cleaning robot with a bow tie: fill his FILTH bar to 100% before the clock runs out. Jam his spray turrets to stop the squeegee, feed his toothy maw, hit the gold stains on his cheeks and jowls. |
 
 Fly into **Jelly Cubes** for items: Turbo Burp, Goo Bazooka, Homing Sock, Bubble Wrap, Ghost Pepper, Goo Geyser, Mega Sneeze, Auto-Goo and the Stun Bomb.
 
@@ -71,8 +69,8 @@ Pick from eight ships, each with its own pilot, hull, stats (speed, handling, go
 
 - `game/index.html` is the page shell. The game is plain scripts in `game/src/`, one job per file, loaded screens and rules first, then the engine:
   - `scenes/`: `scene-flow`, `title`, `how-to-play`, `ship-select`, `level-intro`, `stage-play`, `pause`, `level-results`, `mixin-draft`, `run-complete`, `game-over`
-  - `play/`: `levels`, `mixins`, `run-progress`, `run-stats`, `achievements`, `scoring`, `stage-run` (a level and its twist), `controls`, `boss`, `targets`, `items`, `goo-shots`, `ships`, `flight`, `autopilot`
-  - `ui/`: `ui-type` (labels, panels, the navy ground), `keycap-legend`, `win-lose-pills`, `hud-panels`, `route-map`, `stage-chart`, `achievement-badges`, `how-a-run-goes`, `hud`, `menu-widgets`
+  - `play/`: `levels`, `mixins`, `run-progress`, `scoring`, `stage-run` (a level and its twist), `controls`, `boss`, `targets`, `items`, `goo-shots`, `ships`, `flight`, `autopilot`
+  - `ui/`: `hud`, `menu-widgets`
   - `audio/`: `sound` (synth and music), `announcer` (offline speech)
   - `world/`: `worlds`, `skies`, `corridor`, `gates`
   - `render/`: `projection`, `camera`, `world-render`, `goo-paint`, `effects`, `block-font`

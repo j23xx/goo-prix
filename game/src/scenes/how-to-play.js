@@ -15,7 +15,7 @@ SCENES.howto = {
     if (keyHit('Escape', 'Enter', 'Space', 'Backspace') || input.click) { sfx.uiBack(); goTo('title'); }
   },
   draw(c) {
-    applyCamera(); renderWorld(c); groundWash(c, 0.9);
+    applyCamera(); renderWorld(c); dim(c, 0.84);
     blockText(c, 'HOW TO PLAY', W / 2, 30, 7, { align: 'center', color: YEL, outline: 4, outlineColor: INK, shadow: 9, shadowColor: PNK });
     const rows = [
       ['FLY', '↑ FLAP  ← → STEER  ↓ DIVE', 'THREAD THE ICING WINDOWS FOR +100, A BULLSEYE FOR +250. DIVE THEN FLAP TO BOOST.'],

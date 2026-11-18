@@ -198,7 +198,6 @@ function finishLevel(ok) {
       ['KNOCKS x' + w.knocks, -w.lost],
     ].concat(bonuses),
     knocks: w.knocks, accuracy: acc, bestChain: w.bestChain,
-    kills: w.kills || 0, goldies: w.goldies || 0, shots: w.shots, hits: w.hits, bullseyes: w.bullseyes, threads: w.threads,
   };
   const key = 'lvl' + w.levelIdx + ':' + game.diff;
   res.newBest = !save.bestRace[key] || w.score > save.bestRace[key];

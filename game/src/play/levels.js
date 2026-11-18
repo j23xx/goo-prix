@@ -8,32 +8,32 @@
 // aces: how many rival aces may fly at once. Twists stack in spirit: every level is its own game.
 const LEVELS = [
   {
-    id: 'orderup', rule: 'THE BASICS · HALFWAY, THE TOAST SUN ATTACKS', name: 'ORDER UP', track: 0, speed: 55, waveGap: 3.0, quota: 5000, twist: null,
+    id: 'orderup', name: 'ORDER UP', track: 0, speed: 55, waveGap: 3.0, quota: 5000, twist: null,
     say: 'Order up!', blurb: 'SHOOT EVERYTHING. THREAD THE WINDOWS. DON\'T GET KNOCKED.',
     mix: { floater: 5, zipper: 2, tank: 1, splitter: 1 }, goldie: 0.25, aces: 0, splitGens: 1, setpiece: 'giant',
   },
   {
-    id: 'beatdrop', rule: 'SHOTS ON THE BEAT SCORE x2 · THE PIPE BARREL-ROLLS', name: 'BEAT DROP', track: 1, speed: 62, waveGap: 2.5, quota: 6000, twist: 'rhythm',
+    id: 'beatdrop', name: 'BEAT DROP', track: 1, speed: 62, waveGap: 2.5, quota: 6000, twist: 'rhythm',
     say: 'Beat drop!', blurb: 'SHOTS ON THE BEAT SCORE DOUBLE. THE PIPE ROLLS... THEN FLIPS.',
     mix: { floater: 4, zipper: 3, tank: 1, splitter: 2 }, goldie: 0.3, aces: 1, splitGens: 1, setpiece: 'shower',
   },
   {
-    id: 'whiteout', rule: 'BLIZZARDS FROST THE WALLS: GOO THEM TO SEE · LIGHTS OUT', name: 'WHITE-OUT', track: 2, speed: 66, waveGap: 2.2, quota: 8000, twist: 'whiteout',
+    id: 'whiteout', name: 'WHITE-OUT', track: 2, speed: 66, waveGap: 2.2, quota: 8000, twist: 'whiteout',
     say: 'White out!', blurb: 'BLIZZARDS HIDE THE GATES: GOO THEM TO SEE THEM. STEERING SLIDES.',
     mix: { floater: 3, zipper: 4, tank: 2, splitter: 2 }, goldie: 0.3, aces: 1, splitGens: 2, setpiece: 'dark',
   },
   {
-    id: 'upsidedrown', rule: 'GRAVITY FLIPS EVERY 12 S · THEN THE LAMP TIPS OVER', name: 'UPSIDE DROWN', track: 3, speed: 70, waveGap: 2.0, quota: 9000, twist: 'gravity',
+    id: 'upsidedrown', name: 'UPSIDE DROWN', track: 3, speed: 70, waveGap: 2.0, quota: 9000, twist: 'gravity',
     say: 'Upside drown!', blurb: 'GRAVITY FLIPS EVERY 12 SECONDS. FLAP AWAY FROM IT.',
     mix: { floater: 3, zipper: 3, tank: 2, splitter: 4 }, goldie: 0.35, aces: 2, splitGens: 3, setpiece: 'sideways',
   },
   {
-    id: 'locknslop', rule: 'ZERO-G · HOLD SPACE TO LOCK 6 · LET GO TO FIRE', name: 'LOCK \'N\' SLOP', track: 4, speed: 78, waveGap: 1.6, quota: 12000, twist: 'zerog',
+    id: 'locknslop', name: 'LOCK \'N\' SLOP', track: 4, speed: 78, waveGap: 1.6, quota: 12000, twist: 'zerog',
     say: 'Lock and slop!', blurb: 'ZERO-G: ↑ ↓ THRUST. HOLD SPACE TO LOCK UP TO SIX, LET GO TO FIRE.',
     mix: { floater: 4, zipper: 3, tank: 3, splitter: 2 }, goldie: 0.4, aces: 3, splitGens: 2, setpiece: 'storm',
   },
   {
-    id: 'boss', rule: 'THE FINAL BOSS · MAKE HIM FILTHY', name: 'MISTER SPOTLESS', track: 5, speed: 58, waveGap: 99, quota: 0, twist: 'boss', boss: true,
+    id: 'boss', name: 'MISTER SPOTLESS', track: 5, speed: 58, waveGap: 99, quota: 0, twist: 'boss', boss: true,
     say: 'Mister Spotless!', blurb: 'THE FINAL BOSS. MAKE HIM FILTHY. GOLD STAINS COUNT TRIPLE.',
     mix: { floater: 1 }, goldie: 0, aces: 0, splitGens: 1, setpiece: null,
   },

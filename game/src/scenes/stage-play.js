@@ -32,7 +32,6 @@ SCENES.race = {
   update(dt) {
     if (keyHit('Escape', 'KeyP')) togglePause();
     if (keyHit('KeyM')) AU.setMuted(!save.muted);
-    if (keyHit('KeyH')) game.hudCompact = !game.hudCompact;
     if (game.paused) { pauseUpdate(); return; }
     if (keyHit('KeyR')) { restartLevel(); return; }
     if (world.hitstop > 0) { world.hitstop -= dt; return; }

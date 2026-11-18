@@ -66,7 +66,7 @@ function bossCatch(g) {
   }
   for (const i of bossStainsExposed()) {
     const [sx0, sy0] = BOSS.stains[i];
-    if (near(sx0, sy0, 1.3)) { bossSplat(x, y, 0.8); bossDamage(1.5 * g.dmg * (hasMix('turpentine') ? 1.5 : 1), g); worldPopup('STAIN!', b.dist, b.u + sx0, b.v + sy0 + 1.2); return true; }
+    if (near(sx0, sy0, 1.5)) { bossSplat(x, y, 0.8); bossDamage(1.5 * g.dmg * (hasMix('turpentine') ? 1.5 : 1), g); worldPopup('STAIN!', b.dist, b.u + sx0, b.v + sy0 + 1.2); return true; }
   }
   if (b.maw > 0.5 && near(BOSS.maw[0], BOSS.maw[1], 1.8)) { bossSplat(x, y, 0.65); bossDamage(1.5 * g.dmg * (hasMix('turpentine') ? 1.5 : 1), g); return true; }
   if ((x / BOSS.body[0]) ** 2 + (y / BOSS.body[1]) ** 2 < 1) { bossSplat(x, y, 0.55); bossDamage(0.5 * g.dmg, g); return true; }

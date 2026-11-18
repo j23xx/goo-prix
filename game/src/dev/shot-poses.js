@@ -80,8 +80,9 @@ function poseBoss() {
     w.globs.push({ dist: p.dist + 3 + f * (b.off - 3), u: lerp(p.u, b.u + sx0, f), v: lerp(p.v + 0.3, b.v + sy0, f) + Math.sin(f * Math.PI) * 0.8, vs: 200, vu: 0, vv: 0, owner: p, life: 1, big: false, r: CFG.globR, seed: 40 + k, hit: [], beat: false, homing: null, lockBonus: 0, dmg: 1 });
   }
   worldPopup('+1,200 STAIN!', b.dist, b.u + sx0 - 2.2, b.v + sy0 + 2.6); w.popups[w.popups.length - 1].t = 0.35;
-  // a bleach bolt on its way in
+  // a bleach bolt on its way in, and a dust bunny spat from the maw
   w.bolts.push({ dist: p.dist + 12, u: p.u + 6.4, v: p.v + 0.6, vs: 6, vu: -2, vv: -1, life: 3, kind: 'bleach' });
+  spawnTarget('floater', p.dist + 17, 6.5, 3.6, { skin: 'dustbunny', refill: true, pts: 80 });
   w.score = 18240; w.shownScore = 18240; w.knocks = 1;
   dressCoat(27, 'SPLOOSH!');
   w.onos = [];
@@ -89,15 +90,14 @@ function poseBoss() {
 }
 // The start screen, with the attract flight under way.
 function poseTitle() {
-  enterScene('title'); simulate(6.5); game.menu.i = 1; game.sceneT = 1.2;
+  enterScene('title'); simulate(6.5); game.menu.i = 0; game.sceneT = 1.2;
   world.popups = [];
 }
 // The Mix-in draft between levels 3 and 4, over the dimmed Drain Disco.
 function poseDraft() {
   flyLevel(1, 24);
   const run = game.run;
-  run.mixins = ['thick', 'sticky']; run.drafts = 2; run.level = 3; run.total = 52040; run.grades = ['A', 'S', 'A'];
-  run.stages = [{ idx: 0, score: 9880, quota: 5000, grade: 'A', knocks: 1 }, { idx: 1, score: 21140, quota: 7200, grade: 'S', knocks: 0 }, { idx: 2, score: 21020, quota: 11200, grade: 'A', knocks: 0 }];
+  run.mixins = ['thick', 'sticky']; run.drafts = 2; run.level = 3; run.total = 31480; run.grades = ['A', 'S', 'A'];
   world.popups = []; world.wind = [];
   enterScene('draft');
   game.draft.offer = ['twin', 'hotsauce', 'needle']; game.draft.i = 1;
@@ -118,12 +118,8 @@ function poseResults() {
 function poseFinal() {
   game.racer = 3;
   startRun('campaign', 0);
-  const run = game.run;
-  const grades = ['A', 'S', 'S', 'A', 'S', 'S'], scores = [9880, 21140, 31020, 33400, 52800, 41300], quotas = [5000, 7200, 11200, 14400, 21600, 0], knocks = [1, 0, 0, 2, 0, 1];
-  Object.assign(run, { grades, scores, continues: 2, newHigh: true, mixins: ['thick', 'sticky', 'twin', 'needle', 'turpentine'] });
-  run.total = scores.reduce((a, b) => a + b, 0);
-  run.stages = grades.map((g, i) => ({ idx: i, score: scores[i], quota: quotas[i], grade: g, knocks: knocks[i] }));
-  Object.assign(run.stats, { kills: 581, goldies: 4, shots: 702, hits: 588, bullseyes: 31, threads: 140, knocks: 4, bestChain: 117, noKnock: 3, time: 470 });
+  Object.assign(game.run, { grades: ['A', 'S', 'S', 'A', 'S', 'S'], scores: [9880, 19140, 25020, 23400, 38800, 41300], continues: 1, newHigh: true, mixins: ['thick', 'sticky', 'twin', 'needle', 'turpentine'] });
+  game.run.total = game.run.scores.reduce((a, b) => a + b, 0);
   enterScene('final');
   game.finMenu.i = 0;
   game.sceneT = 3.4;
@@ -144,6 +140,6 @@ function runShot(name) {
   else if (name === 'howto') { enterScene('title'); simulate(3); enterScene('howto'); }
   else if (name === 'select') { enterScene('title'); simulate(3); game.mode = 'campaign'; enterScene('select'); game.racer = 7; game.sceneT = 0.6; }
   else if (name === 'gameover') { game.racer = 5; enterScene('gameover'); game.sceneT = 1; }
-  else { enterScene('title'); simulate(7); game.menu.i = 1; game.sceneT = 1.2; }
+  else { enterScene('title'); simulate(7); game.menu.i = 0; game.sceneT = 1.2; }
   render();
 }

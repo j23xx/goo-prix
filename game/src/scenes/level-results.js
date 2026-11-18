@@ -100,7 +100,7 @@ SCENES.results = {
     opts[sel].go();
   },
   draw(c) {
-    applyCamera(); renderWorld(c); groundWash(c, 0.86);
+    applyCamera(); renderWorld(c); dim(c, 0.6);
     drawResults(c, game.lastResults, game.sceneT);
   },
 };

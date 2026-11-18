@@ -176,8 +176,6 @@ function hitTarget(tg, dmg, g) {
 function killTarget(tg, g) {
   const w = world;
   tg.dead = 'killed';
-  w.kills = (w.kills || 0) + 1;
-  if (tg.cls === 'goldie') w.goldies = (w.goldies || 0) + 1;
   registerHit();
   let pts = tg.pts;
   if (g && g.beat) pts *= 2;
